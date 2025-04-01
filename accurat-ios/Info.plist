@@ -4,8 +4,6 @@
 <dict>
 	<key>MBXAccessToken</key>
 	<string>pk.eyJ1IjoiZmVkZXJpY29uaSIsImEiOiJjbThtdHFmczQwaHhrMnJwbHNpZWc2aDUxIn0.06lym7VxPdj8fvM4-h4IBA</string>
-	<key>Questa app ha bisogno della tua posizione per fornirti indicazioni di navigazione."</key>
-	<string>Questa app ha bisogno della tua posizione per fornirti indicazioni di navigazione.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -28,6 +26,7 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
+		<string>audio</string>
 	</array>
 </dict>
 </plist>
