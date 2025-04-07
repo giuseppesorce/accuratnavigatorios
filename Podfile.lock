@@ -23,14 +23,19 @@ PODS:
     - MapboxCommon (~> 23.10)
   - MapboxSpeech (2.1.1)
   - Polyline (5.1.0)
+  - SnapKit (5.7.1)
   - Solar-dev (3.0.1)
   - Turf (2.8.0)
 
 DEPENDENCIES:
-  - MapboxCoreNavigation
-  - MapboxMaps
-  - MapboxNavigation
-  - Turf
+  - MapboxCommon (= 23.11.4)
+  - MapboxCoreMaps (= 10.19.2)
+  - MapboxCoreNavigation (= 2.19.0)
+  - MapboxMaps (= 10.19.4)
+  - MapboxMobileEvents (= 2.0.0)
+  - MapboxNavigation (= 2.19.0)
+  - SnapKit
+  - Turf (= 2.8.0)
 
 SPEC REPOS:
   trunk:
@@ -44,6 +49,7 @@ SPEC REPOS:
     - MapboxNavigationNative
     - MapboxSpeech
     - Polyline
+    - SnapKit
     - Solar-dev
     - Turf
 
@@ -58,9 +64,10 @@ SPEC CHECKSUMS:
   MapboxNavigationNative: d898e5882007b6caea5af158b0dffb7c75e7641d
   MapboxSpeech: cd25ef99c3a3d2e0da72620ff558276ea5991a77
   Polyline: 2a1f29f87f8d9b7de868940f4f76deb8c678a5b1
+  SnapKit: d612e99e678a2d3b95bf60b0705ed0a35c03484a
   Solar-dev: 4612dc9878b9fed2667d23b327f1d4e54e16e8d0
   Turf: aa2ede4298009639d10db36aba1a7ebaad072a5e
 
-PODFILE CHECKSUM: a862ad2bf9636b3939919ab1fc0d2a5b0d486842
+PODFILE CHECKSUM: 2b978d7e232e7841ec5340c35bc91a0efc81a422
 
 COCOAPODS: 1.16.2
