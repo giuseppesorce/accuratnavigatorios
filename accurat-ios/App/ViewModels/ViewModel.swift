@@ -29,6 +29,6 @@ class StatusBarViewModel: ObservableObject {
     }
 
     private func setupHumidityMonitoring() {
-
+        
     }
 }

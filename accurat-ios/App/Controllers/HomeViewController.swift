@@ -76,8 +76,8 @@ class HomeViewController: UIViewController {
                 guard let strongSelf = self else {
                     return
                 }
-
-                let customNavigationViewController = CustomNavigationViewController(for: response, routeIndex: 0, routeOptions: routeOptions)
+                
+                let customNavigationViewController = CustomNavigationController(for: response, routeIndex: 0, routeOptions: routeOptions)
                 customNavigationViewController.modalPresentationStyle = .fullScreen
                 customNavigationViewController.delegate = strongSelf
 
