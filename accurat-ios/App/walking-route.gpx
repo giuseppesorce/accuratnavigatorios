@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Claude" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>Walking Route</name>
+    <desc>A simulated walking route</desc>
+    <time>2025-04-11T12:00:00Z</time>
+  </metadata>
+  
+  <trk>
+    <name>Walking Path</name>
+    <type>Walking</type>
+    <trkseg>
+      <!-- Point 1: Starting point -->
+      <trkpt lat="44.932500" lon="10.914900">
+        <ele>30</ele>
+        <time>2025-04-11T12:00:00Z</time>
+      </trkpt>
+      
+      <!-- Point 2 -->
+      <trkpt lat="44.932260" lon="10.913579">
+        <ele>31</ele>
+        <time>2025-04-11T12:02:30Z</time>
+      </trkpt>
+      
+      <!-- Point 3 -->
+      <trkpt lat="44.933902" lon="10.912115">
+        <ele>32</ele>
+        <time>2025-04-11T12:05:00Z</time>
+      </trkpt>
+      
+      <!-- Point 4 -->
+      <trkpt lat="44.938756" lon="10.914830">
+        <ele>33</ele>
+        <time>2025-04-11T12:10:00Z</time>
+      </trkpt>
+      
+      <!-- Point 5 -->
+      <trkpt lat="44.940977" lon="10.918361">
+        <ele>34</ele>
+        <time>2025-04-11T12:15:00Z</time>
+      </trkpt>
+      
+      <!-- Point 6 -->
+      <trkpt lat="44.938464" lon="10.919634">
+        <ele>33</ele>
+        <time>2025-04-11T12:20:00Z</time>
+      </trkpt>
+      
+      <!-- Point 7 -->
+      <trkpt lat="44.937297" lon="10.915350">
+        <ele>32</ele>
+        <time>2025-04-11T12:25:00Z</time>
+      </trkpt>
+      
+      <!-- Point 8 -->
+      <trkpt lat="44.932194" lon="10.916784">
+        <ele>31</ele>
+        <time>2025-04-11T12:30:00Z</time>
+      </trkpt>
+      
+      <!-- Point 9: Final point -->
+      <trkpt lat="44.932172" lon="10.915781">
+        <ele>30</ele>
+        <time>2025-04-11T12:35:00Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+  
+  <!-- Adding waypoints for key locations -->
+  <wpt lat="44.932500" lon="10.914900">
+    <name>Start</name>
+    <desc>Starting point</desc>
+  </wpt>
+  
+  <wpt lat="44.940977" lon="10.918361">
+    <name>Midpoint</name>
+    <desc>Furthest point on route</desc>
+  </wpt>
+  
+  <wpt lat="44.932172" lon="10.915781">
+    <name>End</name>
+    <desc>Final destination</desc>
+  </wpt>
+</gpx>
