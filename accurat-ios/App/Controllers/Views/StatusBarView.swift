@@ -1,29 +1,41 @@
+
 import UIKit
 import SnapKit
 import Combine
+import MapboxNavigation
+import MapboxCoreNavigation
+import CoreLocation
+import MapboxDirections
 
 class StatusBarView: UIView {
     // MARK: - UI Elements
+    // Meteo a sinistra
+    private let weatherContainer = UIView()
     private let weatherIconLabel = UILabel()
     private let weatherStatusLabel = UILabel()
+
+    // Temperatura al centro
+    private let temperatureLabel = UILabel()
+
+    // Precipitazioni a destra
+    private let precipitationContainer = UIView()
+    private let precipitationPercentageLabel = UILabel()
+    private var dropIconImageView: UIImageView!
+
+    // Elementi secondari
     private let distanceLabel = UILabel()
-    private let humidityContainer = UIView()
-    private let humidityIconLabel = UILabel()
-    private let humidityPercentageLabel = UILabel()
+    private let loadingIndicator = UIActivityIndicatorView(style: .medium)
 
     // MARK: - Properties
-    private var viewModel: StatusBarViewModel
+    private var weatherViewModel: WeatherViewModel
+    private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
-    init(viewModel: StatusBarViewModel) {
-        self.viewModel = viewModel
+    init(weatherViewModel: WeatherViewModel) {
+        self.weatherViewModel = weatherViewModel
         super.init(frame: .zero)
         setupUI()
-        updateContent()
-
-        viewModel.onDataChanged = { [weak self] in
-            self?.updateContent()
-        }
+        bindViewModels()
     }
 
     required init?(coder: NSCoder) {
@@ -32,102 +44,262 @@ class StatusBarView: UIView {
 
     // MARK: - UI Setup
     private func setupUI() {
-        // View setup
-        backgroundColor = UIColor(red: 0.2, green: 0.2, blue: 0.2, alpha: 0.8)
+        // View setup - Utilizziamo UIStyleKit
+        backgroundColor = UIColor(hex: "#222222", alpha: 0.9) // #222222E5
         layer.cornerRadius = 8
 
-        // Weather icon
-        weatherIconLabel.font = .systemFont(ofSize: 18)
-        weatherIconLabel.textColor = .white
-        addSubview(weatherIconLabel)
+        // Ombra esterna
+        layer.shadowColor = UIColor(hex: "#6F3CFF", alpha: 0.3).cgColor // #6F3CFF4D
+        layer.shadowOffset = CGSize(width: 0, height: 0)
+        layer.shadowRadius = 10
+        layer.shadowOpacity = 1.0
 
-        // Weather status
-        weatherStatusLabel.font = .systemFont(ofSize: 18, weight: .medium)
-        weatherStatusLabel.textColor = .white
-        addSubview(weatherStatusLabel)
+        // Meteo container (sinistra)
+        addSubview(weatherContainer)
+        weatherContainer.backgroundColor = UIStyleKit.Colors.weatherYellow
+        weatherContainer.layer.cornerRadius = 8
 
-        // Distance info
-        distanceLabel.font = .systemFont(ofSize: 18)
-        distanceLabel.textColor = .white
+        weatherIconLabel.font = UIStyleKit.Fonts.regular(size: 14)
+        weatherIconLabel.textColor = UIStyleKit.Colors.textBlack
+        weatherContainer.addSubview(weatherIconLabel)
+
+        weatherStatusLabel.font = UIStyleKit.Fonts.regular(size: 14)
+        weatherStatusLabel.textColor = UIStyleKit.Colors.textBlack
+        weatherStatusLabel.lineBreakMode = .byTruncatingTail
+        weatherStatusLabel.adjustsFontSizeToFitWidth = true
+        weatherStatusLabel.minimumScaleFactor = 0.8
+        weatherContainer.addSubview(weatherStatusLabel)
+
+        // Temperatura (centro)
+        temperatureLabel.font = UIStyleKit.Fonts.regular(size: 14)
+        temperatureLabel.textColor = UIStyleKit.Colors.textWhite
+        temperatureLabel.textAlignment = .center
+        addSubview(temperatureLabel)
+
+        // Precipitazioni (destra)
+        precipitationContainer.backgroundColor = UIColor.clear
+        precipitationContainer.layer.cornerRadius = 8
+        addSubview(precipitationContainer)
+
+        // Configurazione icona drop
+        dropIconImageView = UIImageView(image: UIImage(named: "drop"))
+        dropIconImageView.contentMode = .scaleAspectFit
+        precipitationContainer.addSubview(dropIconImageView)
+
+        precipitationPercentageLabel.font = UIStyleKit.Fonts.regular(size: 14)
+        precipitationPercentageLabel.textColor = UIStyleKit.Colors.lightBackground
+        precipitationPercentageLabel.textAlignment = .center
+        precipitationContainer.addSubview(precipitationPercentageLabel)
+
+        // Distance info (nascosto)
+        distanceLabel.font = UIStyleKit.Fonts.regular(size: 14)
+        distanceLabel.textColor = UIStyleKit.Colors.textWhite
         distanceLabel.textAlignment = .center
+        distanceLabel.isHidden = true
         addSubview(distanceLabel)
 
-        // Humidity container
-        humidityContainer.backgroundColor = UIColor(red: 0.4, green: 0.3, blue: 0.9, alpha: 1.0)
-        humidityContainer.layer.cornerRadius = 16
-        addSubview(humidityContainer)
+        // Loading indicator
+        loadingIndicator.hidesWhenStopped = true
+        loadingIndicator.color = UIStyleKit.Colors.textWhite
+        addSubview(loadingIndicator)
 
-        // Humidity icon
-        humidityIconLabel.text = "⚡"
-        humidityIconLabel.font = .systemFont(ofSize: 18)
-        humidityIconLabel.textColor = .white
-        humidityContainer.addSubview(humidityIconLabel)
-
-        // Humidity percentage
-        humidityPercentageLabel.font = .systemFont(ofSize: 18, weight: .medium)
-        humidityPercentageLabel.textColor = .white
-        humidityContainer.addSubview(humidityPercentageLabel)
+        // Applica gli stili di testo avanzati
+        UIStyleKit.applyTextStyle(to: temperatureLabel, style: .regular, alignment: .center)
+        UIStyleKit.applyTextStyle(to: precipitationPercentageLabel, style: .regular, alignment: .center)
+        UIStyleKit.applyTextStyle(to: weatherStatusLabel, style: .regular, alignment: .left)
 
         setupConstraints()
-        updateContent()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+
+        // Aggiunge l'ombra interna al contenitore principale
+        UIStyleKit.addInnerShadow(
+            to: self,
+            color: UIColor(hex: "#FFFFFF", alpha: 0.08).cgColor,
+            radius: 1,
+            offset: CGSize.zero
+        )
+
+        // Aggiunge l'ombra al container del meteo
+        UIStyleKit.styleWeatherContainer(weatherContainer)
     }
 
     private func setupConstraints() {
-        // Weather icon and status (left)
+        // Meteo container (sinistra)
+        weatherContainer.snp.makeConstraints { make in
+            make.leading.equalToSuperview().offset(8)
+            make.centerY.equalToSuperview()
+            make.height.equalTo(30)
+            // Larghezza dinamica basata sul contenuto con limiti minimo e massimo
+            make.width.greaterThanOrEqualTo(67) // Larghezza minima
+            make.width.lessThanOrEqualTo(150) // Larghezza massima
+        }
+
+        // Weather icon
         weatherIconLabel.snp.makeConstraints { make in
-            make.leading.equalToSuperview().offset(16)
+            make.leading.equalToSuperview().offset(4)
             make.centerY.equalToSuperview()
         }
 
+        // Weather status
         weatherStatusLabel.snp.makeConstraints { make in
-            make.leading.equalTo(weatherIconLabel.snp.trailing).offset(6)
+            make.leading.equalTo(weatherIconLabel.snp.trailing).offset(4)
+            make.trailing.equalToSuperview().offset(-6)
             make.centerY.equalToSuperview()
         }
 
-        // Distance (center)
-        distanceLabel.snp.makeConstraints { make in
+        // Temperatura (centro)
+        temperatureLabel.snp.makeConstraints { make in
             make.center.equalToSuperview()
         }
 
-        // Humidity container (right)
-        humidityContainer.snp.makeConstraints { make in
+        // Precipitazioni (destra)
+        precipitationContainer.snp.makeConstraints { make in
             make.trailing.equalToSuperview().offset(-8)
             make.centerY.equalToSuperview()
-            make.height.equalTo(32)
+            make.height.equalTo(30)
+            make.width.greaterThanOrEqualTo(67)
+            make.width.lessThanOrEqualTo(120)
         }
 
-        // Humidity icon
-        humidityIconLabel.snp.makeConstraints { make in
-            make.leading.equalToSuperview().offset(12)
+        // Icona drop
+        dropIconImageView.snp.makeConstraints { make in
+            make.leading.equalToSuperview().offset(4)
+            make.centerY.equalToSuperview()
+            make.width.height.equalTo(16)
+        }
+
+        // Percentuale precipitazioni
+        precipitationPercentageLabel.snp.makeConstraints { make in
+            make.leading.equalTo(dropIconImageView.snp.trailing).offset(4)
+            make.trailing.equalToSuperview().offset(-6)
             make.centerY.equalToSuperview()
         }
 
-        // Humidity percentage
-        humidityPercentageLabel.snp.makeConstraints { make in
-            make.leading.equalTo(humidityIconLabel.snp.trailing).offset(6)
-            make.trailing.equalToSuperview().offset(-12)
+        // Loading indicator
+        loadingIndicator.snp.makeConstraints { make in
+            make.trailing.equalTo(temperatureLabel.snp.leading).offset(-10)
             make.centerY.equalToSuperview()
+            make.width.height.equalTo(16)
+        }
+
+        // Distance (nascosto)
+        distanceLabel.snp.makeConstraints { make in
+            make.centerX.equalToSuperview()
+            make.bottom.equalToSuperview().offset(-8)
         }
     }
 
-    // MARK: - Content Update
-    private func updateContent() {
-        weatherIconLabel.text = getWeatherIcon(for: viewModel.weatherStatus)
-        weatherStatusLabel.text = viewModel.weatherStatus
-        distanceLabel.text = viewModel.distanceInfo
-        humidityPercentageLabel.text = "\(viewModel.humidityPercentage)%"
+    // MARK: - View Model Binding
+    private func bindViewModels() {
+        // Observe loading state
+        weatherViewModel.$isLoading
+            .receive(on: RunLoop.main)
+            .sink { [weak self] isLoading in
+                if isLoading {
+                    self?.loadingIndicator.startAnimating()
+                } else {
+                    self?.loadingIndicator.stopAnimating()
+                }
+                self?.updateWeatherContent()
+            }
+            .store(in: &cancellables)
+        
+        // Observe error message
+        weatherViewModel.$weatherErrorMessage
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.updateWeatherContent()
+            }
+            .store(in: &cancellables)
+
+        // Observe weather changes
+        weatherViewModel.$currentWeather
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.updateWeatherContent()
+            }
+            .store(in: &cancellables)
+
+        // Observe distance
+        weatherViewModel.$distanceRemaining
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.updateWeatherContent()
+            }
+            .store(in: &cancellables)
+
+        // Initial update
+        updateWeatherContent()
+    }
+
+    private func updateWeatherContent() {
+        if weatherViewModel.isLoading {
+            loadingIndicator.startAnimating()
+            return
+        }
+
+        loadingIndicator.stopAnimating()
+
+        if let _ = weatherViewModel.weatherErrorMessage {
+            weatherIconLabel.text = "⚠️"
+            return
+        }
+
+        if let weather = weatherViewModel.currentWeather {
+            // Aggiorna icona meteo
+            weatherIconLabel.text = getWeatherIcon(for: weather.weatherDescription)
+
+            // Aggiorna descrizione meteo
+            weatherStatusLabel.text = weather.weatherDescription
+            UIStyleKit.applyTextStyle(to: weatherStatusLabel, style: .regular, alignment: .left)
+
+            // Aggiorna temperatura
+            temperatureLabel.text = "\(Int(weather.temperatureC))°C"
+            UIStyleKit.applyTextStyle(to: temperatureLabel, style: .regular, alignment: .center)
+
+            // Aggiorna precipitazioni
+            precipitationPercentageLabel.text = "\(weather.precipitationProbability)%"
+            UIStyleKit.applyTextStyle(to: precipitationPercentageLabel, style: .regular, alignment: .center)
+        } else {
+            precipitationPercentageLabel.text = "0%"
+            UIStyleKit.applyTextStyle(to: precipitationPercentageLabel, style: .regular, alignment: .center)
+        }
+
+        // Aggiorna la distanza (anche se nascosta)
+        if let distance = weatherViewModel.distanceRemaining {
+            distanceLabel.text = distance
+        }
     }
 
     private func getWeatherIcon(for status: String) -> String {
-        switch status.lowercased() {
-        case "rainy":
+        let lowercasedStatus = status.lowercased()
+
+        if lowercasedStatus.contains("rain") || lowercasedStatus.contains("pioggia") {
             return "🌧"
-        case "sunny":
+        } else if lowercasedStatus.contains("sun") || lowercasedStatus.contains("sole") || lowercasedStatus.contains("sereno") {
             return "☀️"
-        case "cloudy":
+        } else if lowercasedStatus.contains("cloud") || lowercasedStatus.contains("nuvol") {
             return "☁️"
-        default:
-            return "🌤"
+        } else if lowercasedStatus.contains("snow") || lowercasedStatus.contains("neve") {
+            return "❄️"
+        } else if lowercasedStatus.contains("fog") || lowercasedStatus.contains("nebbia") {
+            return "🌫"
+        } else if lowercasedStatus.contains("storm") || lowercasedStatus.contains("tempesta") {
+            return "⛈"
+        } else {
+            return "🌤" // Partially cloudy as default
         }
+    }
+
+    // MARK: - Public Methods
+    func updateConditions(at coordinate: CLLocationCoordinate2D) {
+        weatherViewModel.updateConditions(at: coordinate)
+    }
+
+    func updateRouteRoadConditions(for route: Route) {
+        weatherViewModel.updateRouteRoadConditions(for: route)
     }
 }

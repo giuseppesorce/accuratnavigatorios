@@ -13,7 +13,6 @@ import MapboxNavigation
 import MapboxDirections
 
 // MARK: - Banner Finder
-
 class MapboxViewFinder {
 
     static func findView<T: UIView>(ofType type: T.Type, in containerView: UIView?) -> T? {
@@ -40,6 +39,16 @@ class MapboxViewFinder {
         
         return nil
     }
+
+//    static func findInstructionsBanner(in viewController: UIViewController) -> UIView? {
+//        for subview in viewController.view.subviews {
+//            if let bannerClass = NSClassFromString("MapboxNavigation.InstructionsBannerView"),
+//               subview.isKind(of: bannerClass) {
+//                return !subview.isHidden && subview.alpha > 0 ? subview : nil
+//            }
+//        }
+//        return nil
+//    }
 
     // Specific finder for InstructionsBannerView
     static func findInstructionsBanner(in viewController: UIViewController) -> InstructionsBannerView? {

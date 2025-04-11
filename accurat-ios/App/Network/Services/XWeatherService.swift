@@ -1,155 +1,134 @@
-//
-//  XWeatherService.swift
-//  accurat-ios
-//
-//  Created by Federico Malagoni on 10/04/25.
-//
-
 import MapboxNavigation
 import MapboxCoreNavigation
-import SwiftUI
+import UIKit
 import Combine
-import SnapKit
 import Alamofire
 import CoreLocation
 
 // MARK: - XWeather Service
-
 class XWeatherService {
-    private let dateFormatter = ISO8601DateFormatter()
+    private let dateFormatter: ISO8601DateFormatter
 
-    // Fetch current weather conditions for a specific location
+    init() {
+        dateFormatter = ISO8601DateFormatter()
+        dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    }
+
+    // MARK: - Weather Conditions
     func fetchWeatherConditions(for coordinate: CLLocationCoordinate2D, completion: @escaping (Result<WeatherCondition, Error>) -> Void) {
-        let now = Date()
-        let isoDate = dateFormatter.string(from: now)
+        let isoDate = dateFormatter.string(from: Date())
+        let coordinateString = String(format: "%.7f,%.7f", coordinate.latitude, coordinate.longitude)
 
         let parameters: [String: Any] = [
             "client_id": XWeatherConfig.clientID,
             "client_secret": XWeatherConfig.clientSecret,
-            "p": "\(coordinate.latitude),\(coordinate.longitude)",
+            "p": coordinateString,
             "from": isoDate
         ]
 
-        AF.request("\(XWeatherConfig.baseURL)/conditions/", parameters: parameters)
+        print("🌤️ Fetching weather conditions for \(coordinateString)")
+
+        var urlComponents = URLComponents(string: "\(XWeatherConfig.baseURL)/conditions/")!
+        urlComponents.queryItems = parameters.map { URLQueryItem(name: $0.key, value: "\($0.value)") }
+
+        AF.request(urlComponents.url!, method: .get)
             .validate()
-            .responseDecodable(of: WeatherResponse.self) { response in
+            .responseData { response in
                 switch response.result {
-                case .success(let weatherResponse):
-                    guard let locationResponse = weatherResponse.response.first,
-                          let periodData = locationResponse.periods.first else {
-                        completion(.failure(NSError(domain: "XWeatherService", code: 2, userInfo: [NSLocalizedDescriptionKey: "No weather data found"])))
-                        return
+                case .success(let data):
+                    do {
+                        let decoder = JSONDecoder()
+                        let weatherResponse = try decoder.decode(WeatherApiResponse.self, from: data)
+
+                        guard let locationResponse = weatherResponse.response.first,
+                              let periodData = locationResponse.periods.first else {
+                            throw NSError(domain: "XWeatherService", code: 2, userInfo: [NSLocalizedDescriptionKey: "No weather data found"])
+                        }
+
+                        let weatherCode = periodData.weatherCoded ?? periodData.weatherPrimaryCoded ?? ""
+                        let isDay = periodData.isDay ?? false
+                        let temperatureC = periodData.tempC ?? 0
+                        let precipitationProbability = periodData.pop ?? 0
+
+                        let weatherCondition = WeatherCondition(
+                            weatherCode: weatherCode,
+                            isDay: isDay,
+                            temperatureC: temperatureC,
+                            precipitationProbability: precipitationProbability
+                        )
+
+                        completion(.success(weatherCondition))
+
+                    } catch {
+                        print("❌ Errore di decodifica JSON: \(error)")
+                        completion(.failure(error))
                     }
 
-                    let weatherCondition = WeatherCondition(
-                        weatherCode: periodData.weatherCoded,
-                        isDay: periodData.isDay,
-                        temperatureC: periodData.tempC,
-                        precipitationProbability: periodData.pop
-                    )
-
-                    completion(.success(weatherCondition))
-
                 case .failure(let error):
+                    print("❌ Errore di rete: \(error.localizedDescription)")
                     completion(.failure(error))
                 }
             }
     }
 
-    // Fetch road conditions for a specific location
-    func fetchRoadConditions(for coordinate: CLLocationCoordinate2D, completion: @escaping (Result<RoadCondition, Error>) -> Void) {
+    // MARK: - Road Conditions
+    func fetchRoadConditions(for coordinate: CLLocationCoordinate2D, completion: @escaping (Result<RoadCondition?, Error>) -> Void) {
         let now = Date()
         let fromDate = dateFormatter.string(from: now)
-        let toDate = dateFormatter.string(from: now.addingTimeInterval(15 * 60)) // 15 minutes from now
+        let toDate = dateFormatter.string(from: now.addingTimeInterval(15 * 60))
+        let coordinateString = String(format: "%.7f,%.7f", coordinate.latitude, coordinate.longitude)
 
         let parameters: [String: Any] = [
             "client_id": XWeatherConfig.clientID,
             "client_secret": XWeatherConfig.clientSecret,
-            "p": "\(coordinate.latitude),\(coordinate.longitude)",
+            "p": coordinateString,
             "from": fromDate,
             "to": toDate
         ]
 
-        AF.request("\(XWeatherConfig.baseURL)/roadweather/analytics/", parameters: parameters)
+        print("🛣️ Fetching road conditions for \(coordinateString)")
+
+        var urlComponents = URLComponents(string: "\(XWeatherConfig.baseURL)/roadweather/analytics/")!
+        urlComponents.queryItems = parameters.map { URLQueryItem(name: $0.key, value: "\($0.value)") }
+
+        AF.request(urlComponents.url!, method: .get)
             .validate()
-            .responseDecodable(of: WeatherResponse.self) { response in
+            .responseData { response in
                 switch response.result {
-                case .success(let roadResponse):
-                    guard let locationResponse = roadResponse.response.first,
-                          let periodData = locationResponse.periods.first else {
-                        completion(.failure(NSError(domain: "XWeatherService", code: 2, userInfo: [NSLocalizedDescriptionKey: "No road data found"])))
-                        return
-                    }
+                case .success(let data):
+                    do {
+                        // For debugging purposes
+                        if let jsonString = String(data: data, encoding: .utf8) {
+                            print("📊 Raw JSON response: \(jsonString)")
+                        }
 
-                    let summaryIndex = periodData.summaryIndex ?? 0
+                        let decoder = JSONDecoder()
+                        let roadResponse = try decoder.decode(RoadApiResponse.self, from: data)
 
-                    var surfaceCondition: RoadCondition.RoadSurface? = nil
-                    var riskType: RoadCondition.RiskType? = nil
+                        // Handle the case where there's a warning but success is true
+                        if roadResponse.response.isEmpty {
+                            if let error = roadResponse.error {
+                                print("⚠️ Warning: \(error.message)")
 
-                    if let roadSurface = periodData.roadSurface {
-                        surfaceCondition = RoadCondition.RoadSurface.fromProbabilities(roadSurface.conditionProbability)
-                    }
+                                // Check for specific warning about no nearby roads
+                                if error.code == "warn_no_data" {
+                                    // Return nil instead of throwing an error
+                                    completion(.success(nil))
+                                    return
+                                }
+                            }
 
-                    if let riskProbability = periodData.riskProbability {
-                        riskType = RoadCondition.RiskType.fromProbabilities(riskProbability)
-                    }
+                            // For other cases with empty response
+                            completion(.success(nil))
+                            return
+                        }
 
-                    let roadCondition = RoadCondition(
-                        summaryIndex: summaryIndex,
-                        surfaceCondition: surfaceCondition,
-                        riskType: riskType
-                    )
-
-                    completion(.success(roadCondition))
-
-                case .failure(let error):
-                    completion(.failure(error))
-                }
-            }
-    }
-
-    // Batch fetch road conditions for multiple route points
-    func batchFetchRoadConditions(for coordinates: [CLLocationCoordinate2D], timeIntervals: [TimeInterval], completion: @escaping (Result<[RoadCondition], Error>) -> Void) {
-        let now = Date()
-
-        var requests = [String]()
-
-        for (index, coordinate) in coordinates.enumerated() {
-            let startTime = now.addingTimeInterval(timeIntervals[index])
-            let endTime = startTime.addingTimeInterval(90 * 60) // 90 minutes window
-
-            let fromDate = dateFormatter.string(from: startTime)
-            let toDate = dateFormatter.string(from: endTime)
-
-            // Format the request as required by the batch API
-            let encodedCoordinate = String(format: "%f%%2C%f", coordinate.latitude, coordinate.longitude)
-            let encodedFrom = fromDate.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? fromDate
-            let encodedTo = toDate.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? toDate
-
-            let request = "/roadweather/analytics/\(encodedCoordinate)?from=\(encodedFrom)&to=\(encodedTo)"
-            requests.append(request)
-        }
-
-        let requestsParam = requests.joined(separator: ",")
-
-        let parameters: [String: Any] = [
-            "client_id": XWeatherConfig.clientID,
-            "client_secret": XWeatherConfig.clientSecret,
-            "requests": requestsParam
-        ]
-
-        AF.request(XWeatherConfig.batchURL, parameters: parameters)
-            .validate()
-            .responseDecodable(of: BatchResponse.self) { response in
-                switch response.result {
-                case .success(let batchResponse):
-                    var roadConditions = [RoadCondition]()
-
-                    for batchItem in batchResponse.response {
-                        guard let locationResponses = batchItem.response,
-                              let locationResponse = locationResponses.first,
+                        guard let locationResponse = roadResponse.response.first,
+                              !locationResponse.periods.isEmpty,
                               let periodData = locationResponse.periods.first else {
-                            continue
+                            throw NSError(domain: "XWeatherService",
+                                          code: 2,
+                                          userInfo: [NSLocalizedDescriptionKey: "No road data found"])
                         }
 
                         let summaryIndex = periodData.summaryIndex ?? 0
@@ -171,12 +150,94 @@ class XWeatherService {
                             riskType: riskType
                         )
 
-                        roadConditions.append(roadCondition)
+                        completion(.success(roadCondition))
+
+                    } catch {
+                        print("❌ Errore di decodifica JSON: \(error)")
+                        completion(.failure(error))
                     }
 
-                    completion(.success(roadConditions))
+                case .failure(let error):
+                    print("❌ Errore di rete: \(error.localizedDescription)")
+                    completion(.failure(error))
+                }
+            }
+    }
+
+
+    // MARK: - Batch Road Conditions
+    func batchFetchRoadConditions(for coordinates: [CLLocationCoordinate2D], timeIntervals: [TimeInterval], completion: @escaping (Result<[RoadCondition], Error>) -> Void) {
+        let now = Date()
+        var requests = [String]()
+
+        for (index, coordinate) in coordinates.enumerated() {
+            let startTime = now.addingTimeInterval(timeIntervals[index])
+            let endTime = startTime.addingTimeInterval(90 * 60)
+
+            let fromDate = dateFormatter.string(from: startTime)
+            let toDate = dateFormatter.string(from: endTime)
+
+            let encodedCoordinate = String(format: "%.7f%%2C%.7f", coordinate.latitude, coordinate.longitude)
+            let encodedFrom = fromDate.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? fromDate
+            let encodedTo = toDate.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? toDate
+
+            let request = "/roadweather/analytics/\(encodedCoordinate)?from=\(encodedFrom)&to=\(encodedTo)"
+            requests.append(request)
+        }
+
+        let parameters: [String: Any] = [
+            "client_id": XWeatherConfig.clientID,
+            "client_secret": XWeatherConfig.clientSecret,
+            "requests": requests.joined(separator: ",")
+        ]
+
+        AF.request(XWeatherConfig.batchURL, parameters: parameters)
+            .validate()
+            .responseData { response in
+                switch response.result {
+                case .success(let data):
+                    do {
+                        let decoder = JSONDecoder()
+                        let batchResponse = try decoder.decode(RoadBatchResponse.self, from: data)
+
+                        var roadConditions = [RoadCondition]()
+
+                        for batchItem in batchResponse.response {
+                            guard let locationResponses = batchItem.response,
+                                  let locationResponse = locationResponses.first,
+                                  let periodData = locationResponse.periods.first else {
+                                continue
+                            }
+
+                            let summaryIndex = periodData.summaryIndex ?? 0
+
+                            var surfaceCondition: RoadCondition.RoadSurface? = nil
+                            var riskType: RoadCondition.RiskType? = nil
+
+                            if let roadSurface = periodData.roadSurface {
+                                surfaceCondition = RoadCondition.RoadSurface.fromProbabilities(roadSurface.conditionProbability)
+                            }
+
+                            if let riskProbability = periodData.riskProbability {
+                                riskType = RoadCondition.RiskType.fromProbabilities(riskProbability)
+                            }
+
+                            roadConditions.append(RoadCondition(
+                                summaryIndex: summaryIndex,
+                                surfaceCondition: surfaceCondition,
+                                riskType: riskType
+                            ))
+                        }
+
+                        completion(.success(roadConditions))
+
+                    } catch {
+                        print("❌ Errore di decodifica JSON batch: \(error)")
+                        completion(.failure(error))
+                    }
 
                 case .failure(let error):
+                    print("❌ Errore di rete batch: \(error.localizedDescription)")
                     completion(.failure(error))
                 }
             }

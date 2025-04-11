@@ -9,6 +9,7 @@ target 'accurat-ios' do
   pod 'MapboxNavigation', '2.19.0'
   pod 'MapboxMobileEvents', '2.0.0'
   pod 'Turf', '2.8.0'
+  pod 'Alamofire', '5.10.0' 
  
   pod 'SnapKit'
   

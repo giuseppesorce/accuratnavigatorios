@@ -10,9 +10,32 @@ class HomeViewController: UIViewController {
     var navigationViewController: NavigationViewController?
     var locationManager = CLLocationManager()
 
+//    lazy var gpxWaypoints: [Waypoint] = {
+//          return [
+//              Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.93217600, longitude: 10.91521400), name: "Punto 1"),
+//              Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.92917300, longitude: 10.91555200), name: "Punto 12"),
+//              Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.94046900, longitude: 10.94358100), name: "Punto 12"),
+//          ]
+//      }()
+    
+//    lazy var appleGpxWaypoints: [Waypoint] = {
+//          return [
+//              Waypoint(coordinate: CLLocationCoordinate2D(latitude: 37.33172861, longitude: -122.03068446), name: "Punto 1"),
+//              Waypoint(coordinate: CLLocationCoordinate2D(latitude: 37.33084313, longitude: -122.03058427), name: "Punto 2"),
+//           ]
+//      }()
+
+    lazy var bikeGpxWaypoints: [Waypoint] = {
+          return [
+              Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.8213835, longitude: 10.8808131), name: "Fossoli"),
+              Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.875632, longitude: 10.853933), name: "Rolo"),
+              Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.9340683, longitude: 10.9129489), name: "Casa"),
+          ]
+      }()
+
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        
         setupLocationPermissions()
         
         let navigationButton = UIButton(frame: CGRect(x: 20, y: view.bounds.height - 100, width: view.bounds.width - 40, height: 50))
@@ -59,13 +82,12 @@ class HomeViewController: UIViewController {
             return
         }
 
-        let destinationLocation = CLLocationCoordinate2D(latitude: userLocation.latitude + 0.05, longitude: userLocation.longitude + 0.05)
+        var waypointsToUse = bikeGpxWaypoints
 
-        // Create waypoints for origin and destination
-        let origin = Waypoint(coordinate: userLocation, name: "Posizione attuale")
-        let destination = Waypoint(coordinate: destinationLocation, name: "Destinazione")
+        waypointsToUse.insert(Waypoint(coordinate: userLocation, name: "Posizione attuale"), at: 0)
 
-        let routeOptions = NavigationRouteOptions(waypoints: [origin, destination])
+        let routeOptions = NavigationRouteOptions(waypoints: waypointsToUse, profileIdentifier: .cycling)
+        routeOptions.includesAlternativeRoutes = false
 
         Directions.shared.calculate(routeOptions) { [weak self] (session, result) in
             switch result {
@@ -77,7 +99,7 @@ class HomeViewController: UIViewController {
                     return
                 }
                 
-                let customNavigationViewController = CustomNavigationController(for: response, routeIndex: 0, routeOptions: routeOptions)
+                let customNavigationViewController = HomeNavigationController(for: response, routeIndex: 0, routeOptions: routeOptions)
                 customNavigationViewController.modalPresentationStyle = .fullScreen
                 customNavigationViewController.delegate = strongSelf
 
@@ -108,6 +130,7 @@ extension HomeViewController: CLLocationManagerDelegate {
         switch manager.authorizationStatus {
         case .authorizedWhenInUse, .authorizedAlways:
             startNavigation();
+            break
         case .denied, .restricted:
             showLocationPermissionAlert()
         default:
