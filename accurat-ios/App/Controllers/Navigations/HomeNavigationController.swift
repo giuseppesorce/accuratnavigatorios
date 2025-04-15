@@ -17,11 +17,13 @@ class HomeNavigationController: NavigationViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        self.navigationService.simulationSpeedMultiplier = 1
-        
+
         customizeRouteColors()
 
         DispatchQueue.main.async {
+            if let statusView = MapboxViewFinder.findView(ofType: BannerContainerView.self, in: self.navigationView) {
+                statusView.isHidden = true
+            }
             self.setupComponents()
         }
 
@@ -77,7 +79,7 @@ class HomeNavigationController: NavigationViewController {
         let route = navigationService.route
         navigationMapView?.show([route], legIndex:navigationService.routeProgress.legIndex)
     }
-    
+
     private func setupComponents() {
         statusBarController = NavigationStatusBarController(parent: self,
                                                             viewModel: weatherViewModel)

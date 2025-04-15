@@ -10,41 +10,38 @@ class HomeViewController: UIViewController {
     var navigationViewController: NavigationViewController?
     var locationManager = CLLocationManager()
 
-//    lazy var gpxWaypoints: [Waypoint] = {
-//          return [
-//              Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.93217600, longitude: 10.91521400), name: "Punto 1"),
-//              Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.92917300, longitude: 10.91555200), name: "Punto 12"),
-//              Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.94046900, longitude: 10.94358100), name: "Punto 12"),
-//          ]
-//      }()
-    
-//    lazy var appleGpxWaypoints: [Waypoint] = {
-//          return [
-//              Waypoint(coordinate: CLLocationCoordinate2D(latitude: 37.33172861, longitude: -122.03068446), name: "Punto 1"),
-//              Waypoint(coordinate: CLLocationCoordinate2D(latitude: 37.33084313, longitude: -122.03058427), name: "Punto 2"),
-//           ]
-//      }()
+    // Aggiunta del flag per abilitare la simulazione
+    var useSimulation = false
 
     lazy var bikeGpxWaypoints: [Waypoint] = {
-          return [
-              Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.8213835, longitude: 10.8808131), name: "Fossoli"),
-              Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.875632, longitude: 10.853933), name: "Rolo"),
-              Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.9340683, longitude: 10.9129489), name: "Casa"),
-          ]
-      }()
+        return [
+            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.8213835, longitude: 10.8808131), name: "Fossoli"),
+            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.875632, longitude: 10.853933), name: "Rolo"),
+            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.9340683, longitude: 10.9129489), name: "Casa"),
+        ]
+    }()
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+
         setupLocationPermissions()
-        
-        let navigationButton = UIButton(frame: CGRect(x: 20, y: view.bounds.height - 100, width: view.bounds.width - 40, height: 50))
+
+        // Aggiungiamo il bottone per la navigazione normale
+        let navigationButton = UIButton(frame: CGRect(x: 20, y: view.bounds.height - 150, width: view.bounds.width - 40, height: 50))
         navigationButton.backgroundColor = .systemBlue
         navigationButton.setTitle("Avvia Navigazione", for: .normal)
         navigationButton.layer.cornerRadius = 8
         navigationButton.addTarget(self, action: #selector(startNavigation), for: .touchUpInside)
 
+        // Aggiungiamo il bottone per la simulazione
+        let simulationButton = UIButton(frame: CGRect(x: 20, y: view.bounds.height - 90, width: view.bounds.width - 40, height: 50))
+        simulationButton.backgroundColor = .systemGreen
+        simulationButton.setTitle("Avvia Simulazione", for: .normal)
+        simulationButton.layer.cornerRadius = 8
+        simulationButton.addTarget(self, action: #selector(startSimulation), for: .touchUpInside)
+
         view.addSubview(navigationButton)
+        view.addSubview(simulationButton)
     }
 
     func setupLocationPermissions() {
@@ -71,25 +68,55 @@ class HomeViewController: UIViewController {
         present(alert, animated: true)
     }
 
+    // Nuovo metodo per avviare la simulazione
+    @objc func startSimulation() {
+        useSimulation = true
+        startNavigationProcess()
+    }
+
     @objc func startNavigation() {
+        useSimulation = false
+        startNavigationProcess()
+    }
+
+    // Metodo comune per il processo di navigazione
+    func startNavigationProcess() {
         guard CLLocationManager.authorizationStatus() == .authorizedWhenInUse ||
-              CLLocationManager.authorizationStatus() == .authorizedAlways else {
+                CLLocationManager.authorizationStatus() == .authorizedAlways else {
             showLocationPermissionAlert()
             return
         }
-        guard let userLocation = locationManager.location?.coordinate else {
-            print("Could not get user's current location");
-            return
+
+        // Per la simulazione, possiamo usare il primo waypoint come posizione iniziale
+        // altrimenti usiamo la posizione attuale dell'utente
+        let startingPoint: CLLocationCoordinate2D
+
+        if useSimulation {
+            startingPoint = bikeGpxWaypoints.first!.coordinate
+        } else {
+            guard let userLocation = locationManager.location?.coordinate else {
+                print("Could not get user's current location")
+                return
+            }
+            startingPoint = userLocation
         }
 
         var waypointsToUse = bikeGpxWaypoints
 
-        waypointsToUse.insert(Waypoint(coordinate: userLocation, name: "Posizione attuale"), at: 0)
+        // Se non è in simulazione, aggiungiamo la posizione attuale come primo waypoint
+        if !useSimulation {
+            waypointsToUse.insert(Waypoint(coordinate: startingPoint, name: "Posizione attuale"), at: 0)
+        }
 
-        let routeOptions = NavigationRouteOptions(waypoints: waypointsToUse, profileIdentifier: .cycling)
-        routeOptions.includesAlternativeRoutes = false
+        // Convertire i waypoints in coordinates per MapMatching
+        let coordinates = waypointsToUse.map { $0.coordinate }
 
-        Directions.shared.calculate(routeOptions) { [weak self] (session, result) in
+        // Creare MatchOptions per MapMatching
+        let matchOptions = MatchOptions(coordinates: coordinates, profileIdentifier: .cycling)
+        matchOptions.includesSteps = true
+        matchOptions.routeShapeResolution = .full
+
+        Directions.shared.calculateRoutes(matching: matchOptions) { [weak self] (session, result) in
             switch result {
             case .failure(let error):
                 print("Error calculating route: \(error.localizedDescription)")
@@ -98,13 +125,38 @@ class HomeViewController: UIViewController {
                 guard let strongSelf = self else {
                     return
                 }
-                
-                let customNavigationViewController = HomeNavigationController(for: response, routeIndex: 0, routeOptions: routeOptions)
-                customNavigationViewController.modalPresentationStyle = .fullScreen
-                customNavigationViewController.delegate = strongSelf
+                let indexedResponse = IndexedRouteResponse(routeResponse: response, routeIndex: 0)
 
-                strongSelf.present(customNavigationViewController, animated: true, completion: nil)
-                strongSelf.navigationViewController = customNavigationViewController
+
+                if strongSelf.useSimulation {
+                    let navigationOptions = NavigationOptions()
+                    navigationOptions.simulationMode = strongSelf.useSimulation ? .always : .never
+                    
+                    let customNavigationViewController = HomeNavigationController(
+                        for: indexedResponse,
+                        navigationOptions: navigationOptions
+                    )
+                    
+                    customNavigationViewController.modalPresentationStyle = .fullScreen
+                    customNavigationViewController.delegate = strongSelf
+
+                    if strongSelf.useSimulation && customNavigationViewController.navigationService != nil {
+                        customNavigationViewController.navigationService.simulationSpeedMultiplier = 3.0
+                    }
+
+                    strongSelf.present(customNavigationViewController, animated: true, completion: nil)
+                    strongSelf.navigationViewController = customNavigationViewController
+                } else {
+                    let customNavigationViewController = HomeNavigationController(
+                        for: indexedResponse,
+                        navigationOptions: nil
+                    )
+                    customNavigationViewController.modalPresentationStyle = .fullScreen
+                    customNavigationViewController.delegate = strongSelf
+
+                    strongSelf.present(customNavigationViewController, animated: true, completion: nil)
+                    strongSelf.navigationViewController = customNavigationViewController
+                }
             }
         }
     }
@@ -129,7 +181,8 @@ extension HomeViewController: CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         switch manager.authorizationStatus {
         case .authorizedWhenInUse, .authorizedAlways:
-            startNavigation();
+            // Non avviamo automaticamente la navigazione all'autorizzazione
+            // perché ora abbiamo due opzioni (normale e simulazione)
             break
         case .denied, .restricted:
             showLocationPermissionAlert()
