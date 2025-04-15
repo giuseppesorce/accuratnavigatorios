@@ -25,7 +25,7 @@ class HomeViewController: UIViewController {
         super.viewDidLoad()
 
         setupLocationPermissions()
-
+        
         // Aggiungiamo il bottone per la navigazione normale
         let navigationButton = UIButton(frame: CGRect(x: 20, y: view.bounds.height - 150, width: view.bounds.width - 40, height: 50))
         navigationButton.backgroundColor = .systemBlue
@@ -42,6 +42,10 @@ class HomeViewController: UIViewController {
 
         view.addSubview(navigationButton)
         view.addSubview(simulationButton)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            self.startSimulation()
+        }
     }
 
     func setupLocationPermissions() {
@@ -86,9 +90,6 @@ class HomeViewController: UIViewController {
             showLocationPermissionAlert()
             return
         }
-
-        // Per la simulazione, possiamo usare il primo waypoint come posizione iniziale
-        // altrimenti usiamo la posizione attuale dell'utente
         let startingPoint: CLLocationCoordinate2D
 
         if useSimulation {
@@ -103,20 +104,18 @@ class HomeViewController: UIViewController {
 
         var waypointsToUse = bikeGpxWaypoints
 
-        // Se non è in simulazione, aggiungiamo la posizione attuale come primo waypoint
         if !useSimulation {
             waypointsToUse.insert(Waypoint(coordinate: startingPoint, name: "Posizione attuale"), at: 0)
         }
 
-        // Convertire i waypoints in coordinates per MapMatching
         let coordinates = waypointsToUse.map { $0.coordinate }
 
-        // Creare MatchOptions per MapMatching
-        let matchOptions = MatchOptions(coordinates: coordinates, profileIdentifier: .cycling)
-        matchOptions.includesSteps = true
-        matchOptions.routeShapeResolution = .full
+        let routeOptions = NavigationRouteOptions(waypoints: waypointsToUse, profileIdentifier: .cycling)
+        routeOptions.includesSteps = true
+        routeOptions.routeShapeResolution = .full
+        routeOptions.includesAlternativeRoutes = false
 
-        Directions.shared.calculateRoutes(matching: matchOptions) { [weak self] (session, result) in
+        Directions.shared.calculate(routeOptions) { [weak self] (session, result) in
             switch result {
             case .failure(let error):
                 print("Error calculating route: \(error.localizedDescription)")

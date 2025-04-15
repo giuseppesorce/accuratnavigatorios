@@ -1,4 +1,3 @@
-
 import UIKit
 import SnapKit
 import Combine
@@ -11,7 +10,7 @@ class StatusBarView: UIView {
     // MARK: - UI Elements
     // Meteo a sinistra
     private let weatherContainer = UIView()
-    private let weatherIconLabel = UILabel()
+    private let weatherIconImageView = UIImageView()
     private let weatherStatusLabel = UILabel()
 
     // Temperatura al centro
@@ -59,9 +58,9 @@ class StatusBarView: UIView {
         weatherContainer.backgroundColor = UIStyleKit.Colors.weatherYellow
         weatherContainer.layer.cornerRadius = 8
 
-        weatherIconLabel.font = UIStyleKit.Fonts.regular(size: 14)
-        weatherIconLabel.textColor = UIStyleKit.Colors.textBlack
-        weatherContainer.addSubview(weatherIconLabel)
+        // Weather icon (cambiato da UILabel a UIImageView)
+        weatherIconImageView.contentMode = .scaleAspectFit
+        weatherContainer.addSubview(weatherIconImageView)
 
         weatherStatusLabel.font = UIStyleKit.Fonts.regular(size: 14)
         weatherStatusLabel.textColor = UIStyleKit.Colors.textBlack
@@ -137,15 +136,16 @@ class StatusBarView: UIView {
             make.width.lessThanOrEqualTo(150) // Larghezza massima
         }
 
-        // Weather icon
-        weatherIconLabel.snp.makeConstraints { make in
+        // Weather icon (cambiato per UIImageView)
+        weatherIconImageView.snp.makeConstraints { make in
             make.leading.equalToSuperview().offset(4)
             make.centerY.equalToSuperview()
+            make.width.height.equalTo(16)
         }
 
         // Weather status
         weatherStatusLabel.snp.makeConstraints { make in
-            make.leading.equalTo(weatherIconLabel.snp.trailing).offset(4)
+            make.leading.equalTo(weatherIconImageView.snp.trailing).offset(4)
             make.trailing.equalToSuperview().offset(-6)
             make.centerY.equalToSuperview()
         }
@@ -206,7 +206,7 @@ class StatusBarView: UIView {
                 self?.updateWeatherContent()
             }
             .store(in: &cancellables)
-        
+
         // Observe error message
         weatherViewModel.$weatherErrorMessage
             .receive(on: RunLoop.main)
@@ -244,13 +244,14 @@ class StatusBarView: UIView {
         loadingIndicator.stopAnimating()
 
         if let _ = weatherViewModel.weatherErrorMessage {
-            weatherIconLabel.text = "⚠️"
+            // Imposta l'icona di allerta
+            weatherIconImageView.image = UIImage(named: "alert")
             return
         }
 
         if let weather = weatherViewModel.currentWeather {
             // Aggiorna icona meteo
-            weatherIconLabel.text = getWeatherIcon(for: weather.weatherDescription)
+            weatherIconImageView.image = getWeatherIcon(for: weather.weatherDescription)
 
             // Aggiorna descrizione meteo
             weatherStatusLabel.text = weather.weatherDescription
@@ -273,24 +274,27 @@ class StatusBarView: UIView {
             distanceLabel.text = distance
         }
     }
-
-    private func getWeatherIcon(for status: String) -> String {
+    
+    private func getWeatherIcon(for status: String) -> UIImage? {
         let lowercasedStatus = status.lowercased()
 
-        if lowercasedStatus.contains("rain") || lowercasedStatus.contains("pioggia") {
-            return "🌧"
+        if lowercasedStatus.contains("partly cloudy") {
+            return UIImage(named: "partly_cloudy")
+        } else if lowercasedStatus.contains("rain") || lowercasedStatus.contains("pioggia") {
+            return UIImage(named: "drop")
         } else if lowercasedStatus.contains("sun") || lowercasedStatus.contains("sole") || lowercasedStatus.contains("sereno") {
-            return "☀️"
+            return UIImage(named: "sunny")
         } else if lowercasedStatus.contains("cloud") || lowercasedStatus.contains("nuvol") {
-            return "☁️"
+            return UIImage(named: "cloud")
         } else if lowercasedStatus.contains("snow") || lowercasedStatus.contains("neve") {
-            return "❄️"
+            return UIImage(named: "snow")
         } else if lowercasedStatus.contains("fog") || lowercasedStatus.contains("nebbia") {
-            return "🌫"
+            return UIImage(named: "fog")
         } else if lowercasedStatus.contains("storm") || lowercasedStatus.contains("tempesta") {
-            return "⛈"
+            return UIImage(named: "storm")
         } else {
-            return "🌤" // Partially cloudy as default
+            // Valore di default - parzialmente nuvoloso
+            return UIImage(named: "partly_cloudy")
         }
     }
 

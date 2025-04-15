@@ -21,15 +21,50 @@ class HomeNavigationController: NavigationViewController {
         customizeRouteColors()
 
         DispatchQueue.main.async {
-            if let statusView = MapboxViewFinder.findView(ofType: BannerContainerView.self, in: self.navigationView) {
-                statusView.isHidden = true
-            }
             self.setupComponents()
         }
 
         subscribeToRouteProgress()
         customizeUserLocationIcon()
+
+        repositionAttributionButton()
     }
+
+    private func repositionAttributionButton() {
+        // Check if navigation map view is initialized
+        guard let mapView = navigationMapView?.mapView else { return }
+
+        // Configure the attribution button position
+        // The options are: .topLeft, .topRight, .bottomLeft, .bottomRight,
+        // .topLeading, .topTrailing, .bottomLeading, .bottomTrailing
+
+        // For text direction independence, use the Leading/Trailing variants
+        var attributionOptions = mapView.ornaments.options.attributionButton
+        attributionOptions.position = .bottomLeading // Move to bottom left
+        attributionOptions.margins = CGPoint(x: 10, y: 10) // Set margins
+
+        // Apply the updated options
+        mapView.ornaments.options.attributionButton = attributionOptions
+
+        // Hide the compass since we don't need it with our custom UI
+        var compassOptions = mapView.ornaments.options.compass
+        compassOptions.visibility = .hidden
+        mapView.ornaments.options.compass = compassOptions
+
+        // Hide the scale bar which might interfere with our vertical status bar
+        var scaleBarOptions = mapView.ornaments.options.scaleBar
+        scaleBarOptions.visibility = .hidden
+        mapView.ornaments.options.scaleBar = scaleBarOptions
+
+        // Adjust the logo position if needed
+        var logoOptions = mapView.ornaments.options.logo
+        logoOptions.position = .bottomTrailing // Move to bottom right
+        logoOptions.margins = CGPoint(x: 10, y: 10)
+        mapView.ornaments.options.logo = logoOptions
+
+        self.floatingButtonsPosition = .topLeading
+    }
+
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
@@ -40,7 +75,7 @@ class HomeNavigationController: NavigationViewController {
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-
+        
         stopWeatherUpdates()
     }
 
