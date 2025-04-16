@@ -209,8 +209,7 @@ class VerticalStatusBarView: UIView {
             make.width.height.equalTo(20)
         }
 
-        // Add inner shadow after layout - this needs to be done after the container is added to the view hierarchy
-        let containerRef = container // Create a strong reference to the container
+        let containerRef = container
         DispatchQueue.main.async {
             UIStyleKit.addInnerShadow(
                 to: containerRef,

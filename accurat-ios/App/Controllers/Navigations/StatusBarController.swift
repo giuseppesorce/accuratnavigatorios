@@ -8,7 +8,7 @@ import SwiftUI
 import Combine
 import SnapKit
 
-class NavigationStatusBarController {
+class StatusBarController {
     // View components
     private var statusBarView: StatusBarView?
     private var verticalStatusBarView: VerticalStatusBarView?

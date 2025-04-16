@@ -10,7 +10,7 @@ import MapboxMaps
 // MARK: - Updated Navigation Controller
 class HomeNavigationController: NavigationViewController {
 
-    private var statusBarController: NavigationStatusBarController?
+    private var statusBarController: StatusBarController?
 
     private let weatherViewModel = WeatherViewModel()
     private var weatherUpdateTimer: Timer?
@@ -31,41 +31,24 @@ class HomeNavigationController: NavigationViewController {
     }
 
     private func repositionAttributionButton() {
-        // Check if navigation map view is initialized
-        guard let mapView = navigationMapView?.mapView else { return }
-
-        // Configure the attribution button position
-        // The options are: .topLeft, .topRight, .bottomLeft, .bottomRight,
-        // .topLeading, .topTrailing, .bottomLeading, .bottomTrailing
-
-        // For text direction independence, use the Leading/Trailing variants
-        var attributionOptions = mapView.ornaments.options.attributionButton
-        attributionOptions.position = .bottomLeading // Move to bottom left
-        attributionOptions.margins = CGPoint(x: 10, y: 10) // Set margins
-
-        // Apply the updated options
-        mapView.ornaments.options.attributionButton = attributionOptions
-
-        // Hide the compass since we don't need it with our custom UI
-        var compassOptions = mapView.ornaments.options.compass
-        compassOptions.visibility = .hidden
-        mapView.ornaments.options.compass = compassOptions
-
-        // Hide the scale bar which might interfere with our vertical status bar
-        var scaleBarOptions = mapView.ornaments.options.scaleBar
-        scaleBarOptions.visibility = .hidden
-        mapView.ornaments.options.scaleBar = scaleBarOptions
-
-        // Adjust the logo position if needed
-        var logoOptions = mapView.ornaments.options.logo
-        logoOptions.position = .bottomTrailing // Move to bottom right
-        logoOptions.margins = CGPoint(x: 10, y: 10)
-        mapView.ornaments.options.logo = logoOptions
-
         self.floatingButtonsPosition = .topLeading
+
+        if let speedLimitView = MapboxViewFinder.findSpeedLimitView(in: view) {
+            speedLimitView.translatesAutoresizingMaskIntoConstraints = false
+            speedLimitView.superview?.constraints.forEach { constraint in
+                if constraint.firstItem as? SpeedLimitView == speedLimitView || constraint.secondItem as? SpeedLimitView == speedLimitView {
+                    constraint.isActive = false
+                }
+            }
+            if let bannerView = MapboxViewFinder.findBottomBanner(in: self) {
+                speedLimitView.snp.makeConstraints { make in
+                    make.leading.equalTo(view.safeAreaLayoutGuide).offset(8)
+                    make.bottom.equalTo(bannerView.snp.top).offset(-48)
+                }
+            }
+        }
     }
-
-
+    
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
 
@@ -75,7 +58,7 @@ class HomeNavigationController: NavigationViewController {
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        
+
         stopWeatherUpdates()
     }
 
@@ -111,13 +94,16 @@ class HomeNavigationController: NavigationViewController {
         navigationMapView?.traversedRouteColor = lightGrayColor
         navigationMapView?.routeLineTracksTraversal = true
 
+        navigationView.speedLimitView.signStandard = SignStandard.viennaConvention//.alpha = 0.0
+
+
         let route = navigationService.route
         navigationMapView?.show([route], legIndex:navigationService.routeProgress.legIndex)
     }
 
     private func setupComponents() {
-        statusBarController = NavigationStatusBarController(parent: self,
-                                                            viewModel: weatherViewModel)
+        statusBarController = StatusBarController(parent: self,
+                                                  viewModel: weatherViewModel)
         statusBarController?.setup()
     }
 

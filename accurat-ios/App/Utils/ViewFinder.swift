@@ -56,4 +56,33 @@ class MapboxViewFinder {
 
         return nil
     }
+    
+    static func findBottomBanner(in viewController: UIViewController) -> BottomBannerView? {
+        // Try to find in main view
+        if let banner = findView(ofType: BottomBannerView.self, in: viewController.view) {
+            return banner
+        }
+
+        // Check in child view controllers
+        for child in viewController.children {
+            if let banner = findView(ofType: BottomBannerView.self, in: child.view) {
+                return banner
+            }
+        }
+
+        return nil
+    }
+
+    // Helper function to find SpeedLimitView in view hierarchy
+    static func findSpeedLimitView(in view: UIView) -> SpeedLimitView? {
+        if let speedLimitView = view as? SpeedLimitView {
+            return speedLimitView
+        }
+        for subview in view.subviews {
+            if let found = findSpeedLimitView(in: subview) {
+                return found
+            }
+        }
+        return nil
+    }
 }

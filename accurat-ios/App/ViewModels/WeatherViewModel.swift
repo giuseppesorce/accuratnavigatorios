@@ -29,7 +29,7 @@ class WeatherViewModel: ObservableObject {
         roadErrorMessage = nil
 
         let group = DispatchGroup()
-
+        
         // Fetch weather
         group.enter()
         weatherService.fetchWeatherConditions(for: coordinate) { [weak self] result in
