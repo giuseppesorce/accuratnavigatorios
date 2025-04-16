@@ -31,6 +31,22 @@ class HomeNavigationController: NavigationViewController {
     }
 
     private func repositionAttributionButton() {
+        guard let mapView = navigationMapView?.mapView else { return }
+
+        var attributionOptions = mapView.ornaments.options.attributionButton
+        attributionOptions.position = .bottomLeading
+        attributionOptions.margins = CGPoint(x: 10, y: 10)
+
+//        var compassOptions = mapView.ornaments.options.compass
+//        compassOptions.visibility = .hidden
+//        mapView.ornaments.options.compass = compassOptions
+        mapView.ornaments.options.attributionButton = attributionOptions
+
+        var logoOptions = mapView.ornaments.options.logo
+        logoOptions.position = .bottomTrailing
+        logoOptions.margins = CGPoint(x: 10, y: 10)
+        mapView.ornaments.options.logo = logoOptions
+
         self.floatingButtonsPosition = .topLeading
 
         if let speedLimitView = MapboxViewFinder.findSpeedLimitView(in: view) {
@@ -43,12 +59,12 @@ class HomeNavigationController: NavigationViewController {
             if let bannerView = MapboxViewFinder.findBottomBanner(in: self) {
                 speedLimitView.snp.makeConstraints { make in
                     make.leading.equalTo(view.safeAreaLayoutGuide).offset(8)
-                    make.bottom.equalTo(bannerView.snp.top).offset(-48)
+                    make.bottom.equalTo(bannerView.snp.top).offset(-58)
                 }
             }
         }
     }
-    
+
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
 
@@ -94,13 +110,10 @@ class HomeNavigationController: NavigationViewController {
         navigationMapView?.traversedRouteColor = lightGrayColor
         navigationMapView?.routeLineTracksTraversal = true
 
-        navigationView.speedLimitView.signStandard = SignStandard.viennaConvention//.alpha = 0.0
-
-
         let route = navigationService.route
         navigationMapView?.show([route], legIndex:navigationService.routeProgress.legIndex)
     }
-
+    
     private func setupComponents() {
         statusBarController = StatusBarController(parent: self,
                                                   viewModel: weatherViewModel)
