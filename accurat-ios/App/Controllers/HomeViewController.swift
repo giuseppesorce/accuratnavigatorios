@@ -106,16 +106,12 @@ class HomeViewController: UIViewController {
         }
         let startingPoint: CLLocationCoordinate2D
 
-        if useSimulation {
-            startingPoint = bikeGpxWaypoints.first!.coordinate
-        } else {
-            guard let userLocation = locationManager.location?.coordinate else {
-                print("Could not get user's current location")
-                return
-            }
-            startingPoint = userLocation
+        guard let userLocation = locationManager.location?.coordinate else {
+            print("Could not get user's current location")
+            return
         }
-
+        startingPoint = userLocation
+        
         var waypointsToUse = bikeGpxWaypoints
 
         waypointsToUse.insert(Waypoint(coordinate: startingPoint, name: "Posizione attuale"), at: 0)

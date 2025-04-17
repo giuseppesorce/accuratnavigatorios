@@ -4,9 +4,18 @@ import MapboxDirections
 import MapboxCoreNavigation
 import Combine
 
+// MARK: - Types
+struct WaypointInfo: Identifiable {
+    let id = UUID()
+    let index: Int
+    let waypoint: Waypoint
+    let coordinate: CLLocationCoordinate2D?
+    var isPassed: Bool = false
+    var weather: WeatherCondition?
+}
+
 class VerticalStatusBarViewModel: ObservableObject {
     // MARK: - Published Properties
-    @Published var waypointWeatherConditions: [Int: WeatherCondition] = [:]
     @Published var activeWaypoints: [WaypointInfo] = []
     @Published var isLoading: Bool = false
     @Published var waypointsMoreThanMax: Bool = false
@@ -21,15 +30,7 @@ class VerticalStatusBarViewModel: ObservableObject {
     private var lastWeatherUpdateTime: Date = Date.distantPast
     private let weatherUpdateInterval: TimeInterval = 600
 
-    // MARK: - Types
-    struct WaypointInfo: Identifiable {
-        let id = UUID()
-        let index: Int
-        let waypoint: Waypoint
-        let coordinate: CLLocationCoordinate2D?
-        var isPassed: Bool = false
-        var weather: WeatherCondition?
-    }
+
 
     // MARK: - Public Methods
     func setupWaypoints(waypoints: [Waypoint]) {
@@ -51,14 +52,8 @@ class VerticalStatusBarViewModel: ObservableObject {
     func updateUserLocation(userLocation: CLLocationCoordinate2D, routeProgress: RouteProgress) {
         self.currentLocation = userLocation
 
-        // Determina quali waypoint sono stati superati
         updateWaypointPassedStatus(userLocation: userLocation, routeProgress: routeProgress)
-
-        // Aggiorna la lista dei waypoint attivi
         updateActiveWaypoints()
-
-        // Aggiorna le condizioni meteo per includerle nella UI
-        updateWeatherDisplayData()
     }
 
     func stopUpdates() {
@@ -118,40 +113,41 @@ class VerticalStatusBarViewModel: ObservableObject {
         print("activeWaypoints: \(activeWaypoints.count)")
         // Se ci sono più waypoint di quelli che possiamo mostrare, assicuriamoci
         // che l'ultimo waypoint attivo non sia la destinazione finale (a meno che non sia l'unico rimasto)
-        if nonPassedWaypoints.count > maxWaypoints && activeWaypoints.count == maxWaypoints {
-            if let lastWaypointIndex = activeWaypoints.last?.index,
-               lastWaypointIndex == allWaypoints.last?.index {
-                // Rimuovi l'ultimo waypoint (la destinazione) e aggiungi quello precedente nell'elenco
-                activeWaypoints.removeLast()
-                if let nextWaypoint = nonPassedWaypoints.dropFirst(maxWaypoints - 1).first {
-                    activeWaypoints.append(nextWaypoint)
-                }
-            }
-        }
+
+//        if nonPassedWaypoints.count > maxWaypoints && activeWaypoints.count == maxWaypoints {
+//            if let lastWaypointIndex = activeWaypoints.last?.index,
+//               lastWaypointIndex == allWaypoints.last?.index {
+//                // Rimuovi l'ultimo waypoint (la destinazione) e aggiungi quello precedente nell'elenco
+//                activeWaypoints.removeLast()
+//                if let nextWaypoint = nonPassedWaypoints.dropFirst(maxWaypoints - 1).first {
+//                    activeWaypoints.append(nextWaypoint)
+//                }
+//            }
+//        }
     }
 
     // Metodo che aggiorna il dizionario waypointWeatherConditions basandosi sui waypoint attivi
-    private func updateWeatherDisplayData() {
-        // Pulisci il dizionario esistente per evitare dati obsoleti
-        var updatedConditions: [Int: WeatherCondition] = [:]
-        
-        // Aggiorna solo per i waypoint attivi
-        for waypoint in activeWaypoints {
-            // Se abbiamo già le condizioni meteo per questo waypoint, le riutilizziamo
-            if let weather = allWaypoints[waypoint.index].weather {
-                updatedConditions[waypoint.index] = weather
-            } else if let existingWeather = waypointWeatherConditions[waypoint.index] {
-                // Altrimenti, se ci sono nel dizionario esistente, le usiamo
-                updatedConditions[waypoint.index] = existingWeather
-
-                // E aggiorniamo anche il modello interno
-                var updatedWaypoint = allWaypoints[waypoint.index]
-                updatedWaypoint.weather = existingWeather
-                allWaypoints[waypoint.index] = updatedWaypoint
-            }
-        }
-        waypointWeatherConditions = updatedConditions
-    }
+//    private func updateWeatherDisplayData() {
+//        // Pulisci il dizionario esistente per evitare dati obsoleti
+//        var updatedConditions: [Int: WeatherCondition] = [:]
+//        
+//        // Aggiorna solo per i waypoint attivi
+//        for waypoint in activeWaypoints {
+//            // Se abbiamo già le condizioni meteo per questo waypoint, le riutilizziamo
+//            if let weather = allWaypoints[waypoint.index].weather {
+//                updatedConditions[waypoint.index] = weather
+//            } else if let existingWeather = waypointWeatherConditions[waypoint.index] {
+//                // Altrimenti, se ci sono nel dizionario esistente, le usiamo
+//                updatedConditions[waypoint.index] = existingWeather
+//
+//                // E aggiorniamo anche il modello interno
+//                var updatedWaypoint = allWaypoints[waypoint.index]
+//                updatedWaypoint.weather = existingWeather
+//                allWaypoints[waypoint.index] = updatedWaypoint
+//            }
+//        }
+//        waypointWeatherConditions = updatedConditions
+//    }
 
     private func startWeatherUpdateTimer() {
         // Prima fermiamo eventuali timer esistenti
@@ -211,16 +207,12 @@ class VerticalStatusBarViewModel: ObservableObject {
 
                     switch result {
                     case .success(let weather):
-                        // Aggiorna il dizionario delle condizioni meteo
-                        self.waypointWeatherConditions[waypoint.index] = weather
 
-                        // Aggiorna anche il modello di dati interno
                         if waypoint.index < self.allWaypoints.count {
                             var updatedWaypoint = self.allWaypoints[waypoint.index]
                             updatedWaypoint.weather = weather
                             self.allWaypoints[waypoint.index] = updatedWaypoint
                         }
-
                         successfulRequests += 1
                         print("✅ Weather update successful for waypoint #\(waypoint.index): \(weather)")
 
@@ -257,9 +249,6 @@ class VerticalStatusBarViewModel: ObservableObject {
             if self.errorMessage != nil {
                 print("⚠️ Final error status: \(self.errorMessage ?? "no error")")
             }
-
-            // Aggiorna i dati del meteo per la UI dopo che tutte le richieste sono completate
-            self.updateWeatherDisplayData()
         }
     }
 

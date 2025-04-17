@@ -36,14 +36,7 @@ class VerticalStatusBarView: UIView {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] waypoints in
                 self?.updateWeatherPointsWithWaypoints(waypoints)
-            }
-            .store(in: &cancellables)
-
-        // Observe changes in weather conditions
-        viewModel.$waypointWeatherConditions
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] conditions in
-                self?.updateWeatherIcons(with: conditions)
+                self?.updateWeatherIcons(waypoints)
             }
             .store(in: &cancellables)
 
@@ -104,11 +97,6 @@ class VerticalStatusBarView: UIView {
             )
         }
     }
-
-//    private func setupVerticalLine() {
-//        verticalLine.backgroundColor = UIStyleKit.Colors.weatherYellow
-//        addSubview(verticalLine)
-//    }
 
     private func setupBottomContainer() {
         bottomIconView.backgroundColor = UIColor.clear
@@ -183,9 +171,7 @@ class VerticalStatusBarView: UIView {
             let container = createWeatherContainer(forIndex: i)
             weatherContainerViews.append(container)
             addSubview(container)
-
-            // Hide all containers initially
-            container.isHidden = true
+            container.isHidden = false
         }
     }
 
@@ -262,8 +248,6 @@ class VerticalStatusBarView: UIView {
     }
 
     private func updateLineColors() {
-        // We could customize line color based on various conditions
-        // For now using the default yellow color
         verticalLine.backgroundColor = UIStyleKit.Colors.weatherYellow
     }
 
@@ -273,30 +257,25 @@ class VerticalStatusBarView: UIView {
         // Parse the weather code to get the main component
         let weatherPart = weather.weatherCode.split(separator: ":").last?.lowercased() ?? ""
 
+        print("weather is \(weather) - weatherPart \(weatherPart)")
         // Determine color based on weather type
         switch String(weatherPart) {
         case "cl", "fw": // Clear or fair/mostly sunny
-
-            return UIStyleKit.Colors.weatherYellow
+            return UIStyleKit.Colors.precipitationBlue
         case "sc", "bk": // Partly cloudy, mostly cloudy, overcast
             return UIStyleKit.Colors.precipitationBlue
-
         case "r", "rw", "l", "zr", "zl", "ov": // Rain, rain showers, drizzle, freezing rain/drizzle
             return UIStyleKit.Colors.precipitationPurple
-
         case "s", "sw", "ip", "si": // Snow, snow showers, sleet, snow/sleet mix
             return UIStyleKit.Colors.precipitationBlue
-
         case "t": // Thunderstorms
             return UIStyleKit.Colors.precipitationBlue
-
         case "f", "h", "br", "if", "zf": // Fog, haze, mist, ice fog, freezing fog
             return UIStyleKit.Colors.precipitationBlue
         default:
-            return UIStyleKit.Colors.weatherYellow // Default yellow
+            fatalError()
         }
     }
-
 
     private func setupVerticalLine() {
         // Rimuovi la linea singola e aggiungi il contenitore
@@ -492,7 +471,7 @@ class VerticalStatusBarView: UIView {
     }
 
     // Modifica il metodo updateWeatherPointsWithWaypoints per aggiornare anche i segmenti
-    private func updateWeatherPointsWithWaypoints(_ waypoints: [VerticalStatusBarViewModel.WaypointInfo]) {
+    private func updateWeatherPointsWithWaypoints(_ waypoints: [WaypointInfo]) {
         // Mantieni il codice esistente
         // Hide all weather points initially
         for container in weatherContainerViews {
@@ -528,27 +507,24 @@ class VerticalStatusBarView: UIView {
         }
     }
     
-    private func updateWeatherIcons(with conditions: [Int: WeatherCondition]) {
+    private func updateWeatherIcons(_ waypoints: [WaypointInfo]) {
+        print("weatherContainerViews count \(weatherContainerViews.count)")
         for container in weatherContainerViews where !container.isHidden {
             let waypointIndex = container.tag
 
-            if let weather = conditions[waypointIndex],
+            if let waypointInfo = waypoints.filter({$0.index == waypointIndex}).first,
+               let weather = waypointInfo.weather,
                let iconView = container.viewWithTag(100) as? UIImageView {
 
-                print("Showing weather: \(weather) at index \(waypointIndex)")
+                print("Showing weather: \(waypointInfo) at index \(waypointIndex) with name \(weather.iconName)")
 
                 if let iconImage = UIImage(named: weather.iconName) {
                     iconView.image = iconImage
                     iconView.isHidden = false
-                } else {
-                    iconView.isHidden = true
                 }
-
-                // Set container color based on weather type
                 let containerColor = getWeatherColor(for: weather)
+                print(containerColor)
                 container.backgroundColor = containerColor
-
-                // Update shadow color
                 container.layer.shadowColor = containerColor.withAlphaComponent(0.5).cgColor
             }
         }

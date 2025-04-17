@@ -199,10 +199,10 @@ class HomeNavigationController: NavigationViewController {
            let location = navigationService.router.location?.coordinate {
 
             // Aggiorna i waypoint in base alla posizione attuale dell'utente
-            verticalStatusBarViewModel.updateUserLocation(
-                userLocation: location,
-                routeProgress: routeProgress
-            )
+//            verticalStatusBarViewModel.updateUserLocation(
+//                userLocation: location,
+//                routeProgress: routeProgress
+//            )
 
             // Aggiorna la distanza rimanente
             let formatter = DistanceFormatter()
@@ -210,14 +210,21 @@ class HomeNavigationController: NavigationViewController {
             weatherViewModel.updateDistance(distance: distanceRemaining)
 
             // Controlla se è necessario aggiornare il meteo dei waypoint
-            verticalStatusBarViewModel.checkAndUpdateWeatherIfNeeded()
+            // verticalStatusBarViewModel.checkAndUpdateWeatherIfNeeded()
 
             let currentDistance = routeProgress.distanceTraveled
             let updateInterval = 5000.0  // 5 kilometers in meters
 
-            //            if currentDistance.truncatingRemainder(dividingBy: updateInterval) < 100 {
-            //                updateWeatherForCurrentLocation()
-            //            }
+            
+            if currentDistance.truncatingRemainder(dividingBy: updateInterval) < 100 {
+//                updateWeatherForCurrentLocation()
+
+                verticalStatusBarViewModel.checkAndUpdateWeatherIfNeeded()
+                verticalStatusBarViewModel.updateUserLocation(
+                    userLocation: location,
+                    routeProgress: routeProgress
+                )
+            }
         }
     }
 

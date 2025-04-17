@@ -24,6 +24,8 @@ class WeatherViewModel: ObservableObject {
 
     // Fetch both weather and road conditions at once
     func updateConditions(at coordinate: CLLocationCoordinate2D) {
+        return
+        
         isLoading = true
         weatherErrorMessage = nil
         roadErrorMessage = nil
