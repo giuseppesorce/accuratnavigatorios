@@ -16,8 +16,10 @@ class VerticalStatusBarViewModel: ObservableObject {
     @Published var waypointWeatherConditions: [Int: WeatherCondition] = [:]
     @Published var activeWaypoints: [WaypointInfo] = []
     @Published var isLoading: Bool = false
+    @Published var waypointsMoreThanMax: Bool = false
     @Published var errorMessage: String?
-
+    @Published var currentLocation: CLLocationCoordinate2D? = nil
+    
     // MARK: - Private Properties
     private let weatherService = XWeatherService()
     private var weatherUpdateTimer: Timer?
@@ -31,14 +33,15 @@ class VerticalStatusBarViewModel: ObservableObject {
         let id = UUID()
         let index: Int
         let waypoint: Waypoint
+        let coordinate: CLLocationCoordinate2D?
         var isPassed: Bool = false
     }
-
+    
     // MARK: - Public Methods
     func setupWaypoints(waypoints: [Waypoint]) {
         // Utilizziamo i waypoint forniti da HomeViewController
         allWaypoints = waypoints.enumerated().map { index, waypoint in
-            WaypointInfo(index: index, waypoint: waypoint, isPassed: false)
+            WaypointInfo(index: index, waypoint: waypoint, coordinate: nil, isPassed: false)
         }
 
         // Inizializza i waypoint attivi
@@ -52,6 +55,9 @@ class VerticalStatusBarViewModel: ObservableObject {
     }
 
     func updateUserLocation(userLocation: CLLocationCoordinate2D, routeProgress: RouteProgress) {
+
+        self.currentLocation = userLocation
+
         // Determina quali waypoint sono stati superati
         updateWaypointPassedStatus(userLocation: userLocation, routeProgress: routeProgress)
 
@@ -69,6 +75,9 @@ class VerticalStatusBarViewModel: ObservableObject {
         // Filtra i waypoint non ancora superati
         let nonPassedWaypoints = allWaypoints.filter { !$0.isPassed }
 
+        if (nonPassedWaypoints.count > maxWaypoints) {
+            waypointsMoreThanMax = true
+        }
         // Prendi solo i primi maxWaypoints
         activeWaypoints = Array(nonPassedWaypoints.prefix(maxWaypoints))
 

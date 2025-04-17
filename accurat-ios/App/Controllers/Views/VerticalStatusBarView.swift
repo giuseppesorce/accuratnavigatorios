@@ -8,7 +8,6 @@ class VerticalStatusBarView: UIView {
     private let topLocationIcon = UIImageView()
     private let verticalLine = UIView()
     private let bottomIconView = UIImageView()
-    private let morePointsIndicator = UIImageView()
 
     // MARK: - Properties
     private var viewModel: VerticalStatusBarViewModel
@@ -128,30 +127,44 @@ class VerticalStatusBarView: UIView {
     }
 
     private func setupMorePointsIndicator() {
-        morePointsIndicator.backgroundColor = UIStyleKit.Colors.weatherYellow
-        morePointsIndicator.layer.cornerRadius = 20
-        morePointsIndicator.clipsToBounds = true
-        morePointsIndicator.contentMode = .scaleAspectFit
-        morePointsIndicator.image = UIImage(named: "more")
-        morePointsIndicator.tintColor = UIStyleKit.Colors.textWhite
-        morePointsIndicator.isHidden = true
+        if (viewModel.waypointsMoreThanMax) {
+            topLocationIcon.isHidden = true
 
-        morePointsIndicator.layer.shadowColor = UIStyleKit.Colors.weatherYellowShadow.cgColor
-        morePointsIndicator.layer.shadowOffset = CGSize(width: 0, height: 0)
-        morePointsIndicator.layer.shadowRadius = 5.53
-        morePointsIndicator.layer.shadowOpacity = 1.0
+            for i in 0..<3 {
+                let dashedLine = UIView()
+                dashedLine.backgroundColor = UIStyleKit.Colors.weatherYellow
+                dashedLine.layer.cornerRadius = 2
+                dashedLine.tag = 200 + i
 
-        addSubview(morePointsIndicator)
+                // Aggiungi ombra esterna
+                dashedLine.layer.shadowColor = UIStyleKit.Colors.weatherYellowShadow.cgColor
+                dashedLine.layer.shadowOffset = CGSize(width: 0, height: 0)
+                dashedLine.layer.shadowRadius = 5.53
+                dashedLine.layer.shadowOpacity = 1.0
 
-        // Add inner shadow after layout
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            UIStyleKit.addInnerShadow(
-                to: self.morePointsIndicator,
-                color: UIStyleKit.Colors.innerShadow.cgColor,
-                radius: 2.76,
-                offset: CGSize(width: 0, height: 1.38)
-            )
+                addSubview(dashedLine)
+
+                // Posiziona la linea nella stessa posizione verticale di topLocationIcon
+                dashedLine.snp.makeConstraints { make in
+                    make.centerX.equalToSuperview().offset(1)
+                    make.width.equalTo(6)
+                    make.height.equalTo(8)
+
+                    // Centra verticalmente rispetto a topLocationIcon
+                    let baseOffset = CGFloat(30) + CGFloat(25) - CGFloat(12)  // offset + metà altezza topLocationIcon - metà altezza totale delle tre linee
+                    let lineOffset = CGFloat(i * 12)
+                    make.top.equalToSuperview().offset(Int(baseOffset + lineOffset))
+                }
+
+                DispatchQueue.main.async {
+                    UIStyleKit.addInnerShadow(
+                        to: dashedLine,
+                        color: UIStyleKit.Colors.innerShadow.cgColor,
+                        radius: 2.76,
+                        offset: CGSize(width: 0, height: 1.38)
+                    )
+                }
+            }
         }
     }
 
@@ -214,28 +227,23 @@ class VerticalStatusBarView: UIView {
 
         return container
     }
-
+    
     private func setupConstraints() {
-        // Top location icon
         topLocationIcon.snp.makeConstraints { make in
             make.top.equalToSuperview().offset(40)
             make.centerX.equalToSuperview()
             make.width.height.equalTo(50)
         }
-
-        // Vertical line
         verticalLine.snp.makeConstraints { make in
             make.centerX.equalToSuperview().offset(1)
-            make.width.equalTo(4)
+            make.width.equalTo(6)
             make.top.equalTo(topLocationIcon.snp.bottom).offset(-9)
             make.bottom.equalTo(bottomIconView.snp.top).offset(2)
         }
 
-        // Calculate space to distribute waypoints evenly
         let availableHeight = UIScreen.main.bounds.height - 200
         let waypointSpacing = availableHeight / CGFloat(weatherContainerViews.count + 1)
 
-        // Position weather containers along the vertical line
         for (index, container) in weatherContainerViews.enumerated() {
             container.snp.makeConstraints { make in
                 make.centerX.equalToSuperview()
@@ -246,18 +254,10 @@ class VerticalStatusBarView: UIView {
             }
         }
 
-        // Bottom container (destination icon)
         bottomIconView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
             make.bottom.equalToSuperview().inset(40)
             make.width.height.equalTo(50)
-        }
-
-        // More points indicator (three dots)
-        morePointsIndicator.snp.makeConstraints { make in
-            make.centerX.equalToSuperview()
-            make.bottom.equalToSuperview().inset(40)
-            make.width.height.equalTo(40)
         }
     }
 
@@ -277,19 +277,13 @@ class VerticalStatusBarView: UIView {
                 weatherContainerViews[i].isHidden = false
             }
         }
-
-        // Handle special case when more than 6 waypoints
-        if waypoints.count > 6 {
-            // Show "more points" indicator and hide final destination
-            morePointsIndicator.isHidden = false
+        
+        if viewModel.waypointsMoreThanMax {
             topLocationIcon.isHidden = true
         } else {
-            // Show final destination and hide "more points" indicator
-            morePointsIndicator.isHidden = true
             topLocationIcon.isHidden = false
         }
 
-        // Update vertical line color
         updateLineColors()
     }
 

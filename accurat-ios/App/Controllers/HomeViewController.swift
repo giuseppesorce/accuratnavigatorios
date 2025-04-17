@@ -147,9 +147,9 @@ class HomeViewController: UIViewController {
                     customNavigationViewController.delegate = strongSelf
 
                     if strongSelf.useSimulation && customNavigationViewController.navigationService != nil {
-                        customNavigationViewController.navigationService.simulationSpeedMultiplier = 3.0
+                        customNavigationViewController.navigationService.simulationSpeedMultiplier = 18.0
                     }
-
+                    
                     strongSelf.present(customNavigationViewController, animated: true, completion: nil)
                     strongSelf.navigationViewController = customNavigationViewController
                 } else {
