@@ -10,19 +10,21 @@ class HomeViewController: UIViewController {
     var navigationViewController: NavigationViewController?
     var locationManager = CLLocationManager()
 
-    // Aggiunta del flag per abilitare la simulazione
     var useSimulation = false
-
+    
     lazy var bikeGpxWaypoints: [Waypoint] = {
         return [
+
+            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.9297, longitude: 10.9151),
+                     name: "Tamoil Moglia"),
             Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.8413835, longitude: 10.8758131),
                      name: "Budrione"),
-            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.8513835, longitude: 10.8738131),
-                     name: "Migliarina"),
+//            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.8513835, longitude: 10.8738131),
+//                     name: "Migliarina"),
             Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.7913835, longitude: 10.8138131),
                      name: "Modena Nord"),
-            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.9813835, longitude: 10.9338131),
-                     name: "Mirandola Centro"),
+//            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.9813835, longitude: 10.9338131),
+//                     name: "Mirandola Centro"),
             Waypoint(coordinate: CLLocationCoordinate2D(latitude: 41.984920, longitude: 15.004287),
                      name: "Molise"),
             
@@ -111,7 +113,7 @@ class HomeViewController: UIViewController {
             return
         }
         startingPoint = userLocation
-        
+
         var waypointsToUse = bikeGpxWaypoints
 
         waypointsToUse.insert(Waypoint(coordinate: startingPoint, name: "Posizione attuale"), at: 0)

@@ -30,8 +30,6 @@ class VerticalStatusBarViewModel: ObservableObject {
     private var lastWeatherUpdateTime: Date = Date.distantPast
     private let weatherUpdateInterval: TimeInterval = 600
 
-
-
     // MARK: - Public Methods
     func setupWaypoints(waypoints: [Waypoint]) {
         // Utilizziamo i waypoint forniti da HomeViewController
@@ -107,47 +105,10 @@ class VerticalStatusBarViewModel: ObservableObject {
 
         waypointsMoreThanMax = nonPassedWaypoints.count > maxWaypoints
 
-        // Prendi solo i primi maxWaypoints
         activeWaypoints = Array(nonPassedWaypoints.prefix(maxWaypoints))
 
         print("activeWaypoints: \(activeWaypoints.count)")
-        // Se ci sono più waypoint di quelli che possiamo mostrare, assicuriamoci
-        // che l'ultimo waypoint attivo non sia la destinazione finale (a meno che non sia l'unico rimasto)
-
-//        if nonPassedWaypoints.count > maxWaypoints && activeWaypoints.count == maxWaypoints {
-//            if let lastWaypointIndex = activeWaypoints.last?.index,
-//               lastWaypointIndex == allWaypoints.last?.index {
-//                // Rimuovi l'ultimo waypoint (la destinazione) e aggiungi quello precedente nell'elenco
-//                activeWaypoints.removeLast()
-//                if let nextWaypoint = nonPassedWaypoints.dropFirst(maxWaypoints - 1).first {
-//                    activeWaypoints.append(nextWaypoint)
-//                }
-//            }
-//        }
     }
-
-    // Metodo che aggiorna il dizionario waypointWeatherConditions basandosi sui waypoint attivi
-//    private func updateWeatherDisplayData() {
-//        // Pulisci il dizionario esistente per evitare dati obsoleti
-//        var updatedConditions: [Int: WeatherCondition] = [:]
-//        
-//        // Aggiorna solo per i waypoint attivi
-//        for waypoint in activeWaypoints {
-//            // Se abbiamo già le condizioni meteo per questo waypoint, le riutilizziamo
-//            if let weather = allWaypoints[waypoint.index].weather {
-//                updatedConditions[waypoint.index] = weather
-//            } else if let existingWeather = waypointWeatherConditions[waypoint.index] {
-//                // Altrimenti, se ci sono nel dizionario esistente, le usiamo
-//                updatedConditions[waypoint.index] = existingWeather
-//
-//                // E aggiorniamo anche il modello interno
-//                var updatedWaypoint = allWaypoints[waypoint.index]
-//                updatedWaypoint.weather = existingWeather
-//                allWaypoints[waypoint.index] = updatedWaypoint
-//            }
-//        }
-//        waypointWeatherConditions = updatedConditions
-//    }
 
     private func startWeatherUpdateTimer() {
         // Prima fermiamo eventuali timer esistenti

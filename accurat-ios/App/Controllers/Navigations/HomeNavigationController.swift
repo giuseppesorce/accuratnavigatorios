@@ -195,36 +195,34 @@ class HomeNavigationController: NavigationViewController {
     }
 
     @objc private func didUpdateProgress(_ notification: Notification) {
-        if let routeProgress = notification.userInfo?[RouteController.NotificationUserInfoKey.routeProgressKey] as? RouteProgress,
-           let location = navigationService.router.location?.coordinate {
+        guard let routeProgress = notification.userInfo?[RouteController.NotificationUserInfoKey.routeProgressKey] as? RouteProgress,
+              let location = navigationService.router.location?.coordinate else {
+            return
+        }
+        // DEBUG - ON
+        verticalStatusBarViewModel.updateUserLocation(
+            userLocation: location,
+            routeProgress: routeProgress
+        )
+        
+        // Aggiorna la distanza rimanente
+        let formatter = DistanceFormatter()
+        let distanceRemaining = formatter.string(from: routeProgress.distanceRemaining)
+        weatherViewModel.updateDistance(distance: distanceRemaining)
 
-            // Aggiorna i waypoint in base alla posizione attuale dell'utente
-//            verticalStatusBarViewModel.updateUserLocation(
-//                userLocation: location,
-//                routeProgress: routeProgress
-//            )
+        // Calcola la distanza percorsa e definisci l'intervallo di aggiornamento
+        let currentDistance = routeProgress.distanceTraveled
+        let updateInterval = 5000.0  // 5 chilometri in metri
 
-            // Aggiorna la distanza rimanente
-            let formatter = DistanceFormatter()
-            let distanceRemaining = formatter.string(from: routeProgress.distanceRemaining)
-            weatherViewModel.updateDistance(distance: distanceRemaining)
-
-            // Controlla se è necessario aggiornare il meteo dei waypoint
-            // verticalStatusBarViewModel.checkAndUpdateWeatherIfNeeded()
-
-            let currentDistance = routeProgress.distanceTraveled
-            let updateInterval = 5000.0  // 5 kilometers in meters
-
-            
-            if currentDistance.truncatingRemainder(dividingBy: updateInterval) < 100 {
-//                updateWeatherForCurrentLocation()
-
-                verticalStatusBarViewModel.checkAndUpdateWeatherIfNeeded()
-                verticalStatusBarViewModel.updateUserLocation(
-                    userLocation: location,
-                    routeProgress: routeProgress
-                )
-            }
+        // Controlla se è il momento di aggiornare in base alla distanza percorsa
+        if abs(currentDistance.truncatingRemainder(dividingBy: updateInterval)) < 100 {
+            // Aggiorna prima la posizione dell'utente
+            verticalStatusBarViewModel.updateUserLocation(
+                userLocation: location,
+                routeProgress: routeProgress
+            )
+            // Poi verifica e aggiorna il meteo se necessario
+            verticalStatusBarViewModel.checkAndUpdateWeatherIfNeeded()
         }
     }
 

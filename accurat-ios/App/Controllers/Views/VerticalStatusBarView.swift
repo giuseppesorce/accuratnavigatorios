@@ -61,14 +61,14 @@ class VerticalStatusBarView: UIView {
 
     // MARK: - UI Setup
     private func setupUI() {
-        // Top location icon
-        setupTopLocationIcon()
-
         // Main vertical line
         setupVerticalLine()
 
         // Bottom container (destination)
         setupBottomContainer()
+
+        // Top location icon (aggiunto dopo la linea per essere sopra)
+        setupTopLocationIcon()
 
         // Setup "more points" indicator
         setupMorePointsIndicator()
@@ -218,8 +218,7 @@ class VerticalStatusBarView: UIView {
         guard !viewModel.activeWaypoints.isEmpty, !weatherContainerViews.isEmpty else { return }
 
         let lineHeight = self.verticalLine.frame.height
-        let topY = topLocationIcon.frame.maxY - 9 // Offset per avvicinare all'icona
-
+        let topY = topLocationIcon.frame.maxY - 7 // Offset per avvicinare all'icona
 
         let containerHeight: CGFloat = 25
         let visibleContainers = viewModel.activeWaypoints.count
@@ -261,7 +260,7 @@ class VerticalStatusBarView: UIView {
         // Determine color based on weather type
         switch String(weatherPart) {
         case "cl", "fw": // Clear or fair/mostly sunny
-            return UIStyleKit.Colors.precipitationBlue
+            return UIStyleKit.Colors.weatherYellow
         case "sc", "bk": // Partly cloudy, mostly cloudy, overcast
             return UIStyleKit.Colors.precipitationBlue
         case "r", "rw", "l", "zr", "zl", "ov": // Rain, rain showers, drizzle, freezing rain/drizzle
@@ -299,14 +298,14 @@ class VerticalStatusBarView: UIView {
         verticalLineContainer.snp.makeConstraints { make in
             make.centerX.equalToSuperview().offset(1)
             make.width.equalTo(6)
-            make.top.equalTo(topLocationIcon.snp.bottom).offset(-9)
+            make.top.equalTo(topLocationIcon.snp.bottom).offset(-7)
             make.bottom.equalTo(bottomIconView.snp.top).offset(2)
         }
-
+        
         verticalLine.snp.makeConstraints { make in
             make.centerX.equalToSuperview().offset(1)
             make.width.equalTo(6)
-            make.top.equalTo(topLocationIcon.snp.bottom).offset(-9)
+            make.top.equalTo(topLocationIcon.snp.bottom).offset(-7)
             make.bottom.equalTo(bottomIconView.snp.top).offset(2)
         }
 
@@ -334,6 +333,7 @@ class VerticalStatusBarView: UIView {
         lineSegments.removeAll()
 
         let visibleContainers = weatherContainerViews.filter { !$0.isHidden }
+
         guard !visibleContainers.isEmpty else {
             // Se non ci sono contenitori visibili, crea una linea singola con il colore predefinito
             let singleSegment = createLineSegment(color: UIStyleKit.Colors.weatherYellow)
@@ -368,10 +368,8 @@ class VerticalStatusBarView: UIView {
             let upperContainer = sortedContainers[i]
             let lowerContainer = sortedContainers[i + 1]
 
-            // Colore container superiore
-            let upperColor = upperContainer.backgroundColor ?? UIStyleKit.Colors.weatherYellow
-            // Colore container inferiore
-            let lowerColor = lowerContainer.backgroundColor ?? UIStyleKit.Colors.weatherYellow
+            let upperColor = upperContainer.backgroundColor!
+            let lowerColor = lowerContainer.backgroundColor!
 
             if upperColor == lowerColor {
                 // Se i colori sono uguali, crea un solo segmento
@@ -437,7 +435,7 @@ class VerticalStatusBarView: UIView {
     private func createLineSegment(color: UIColor) -> UIView {
         let segment = UIView()
         segment.backgroundColor = color
-        segment.layer.cornerRadius = 4
+        segment.layer.cornerRadius = 0
 
         segment.layer.shadowColor = color.withAlphaComponent(0.5).cgColor
         segment.layer.shadowOffset = CGSize(width: 0, height: 0)
@@ -463,69 +461,98 @@ class VerticalStatusBarView: UIView {
         super.layoutSubviews()
 
         // Aggiorna i gradienti quando le dimensioni cambiano
-        for (index, segment) in lineSegments.enumerated() {
-            if let gradientLayer = segment.layer.sublayers?.first as? CAGradientLayer {
-                gradientLayer.frame = segment.bounds
-            }
-        }
+//        for (index, segment) in lineSegments.enumerated() {
+//            if let gradientLayer = segment.layer.sublayers?.first as? CAGradientLayer {
+//                gradientLayer.frame = segment.bounds
+//            }
+//        }
     }
 
-    // Modifica il metodo updateWeatherPointsWithWaypoints per aggiornare anche i segmenti
     private func updateWeatherPointsWithWaypoints(_ waypoints: [WaypointInfo]) {
-        // Mantieni il codice esistente
-        // Hide all weather points initially
-        for container in weatherContainerViews {
+        print("==== DEBUG: updateWeatherPointsWithWaypoints ====")
+        print("Received waypoints: \(waypoints.count)")
+        print("Waypoint indices: \(waypoints.map { $0.index })")
+        print("Weather container views: \(weatherContainerViews.count)")
+
+        for (index, container) in weatherContainerViews.enumerated() {
+            print("Initial state - Container \(index) hidden: \(container.isHidden), tag: \(container.tag)")
             container.isHidden = true
         }
 
-        // Show only points for active waypoints (up to 6)
-        let maxVisiblePoints = min(waypoints.count, 6)
+        // Ottieni waypoint attivi ordinati per indice in ordine decrescente (indici maggiori in alto)
+        let sortedWaypoints = waypoints.sorted { $0.index > $1.index }
+        print("Sorted waypoints indices: \(sortedWaypoints.map { $0.index })")
+
+        // Mostra solo i punti per i waypoint attivi (fino a 6)
+        let maxVisiblePoints = min(sortedWaypoints.count, 6)
+        print("Will show \(maxVisiblePoints) visible points")
 
         for i in 0..<maxVisiblePoints {
             if i < weatherContainerViews.count {
+                let waypointIndex = sortedWaypoints[i].index
+                print("Making container \(i) visible for waypoint \(waypointIndex)")
+                weatherContainerViews[i].tag = waypointIndex
                 weatherContainerViews[i].isHidden = false
             }
         }
-
+        
         if viewModel.waypointsMoreThanMax {
             topLocationIcon.isHidden = true
         } else {
             topLocationIcon.isHidden = false
         }
 
-        // Aggiorniamo le posizioni dei container
         updateWeatherContainerPositions()
 
-        // Questa chiamata è stata modificata - non usare più updateLineColors()
-        // updateLineColors()
-
-        // Aggiungi questa chiamata per aggiornare i segmenti colorati
-        // Importante: chiamare dopo updateWeatherContainerPositions
-        // perché abbiamo bisogno delle posizioni aggiornate dei container
+        print("Scheduling line segments update")
         DispatchQueue.main.async { [weak self] in
             self?.updateLineSegments()
         }
     }
-    
-    private func updateWeatherIcons(_ waypoints: [WaypointInfo]) {
-        print("weatherContainerViews count \(weatherContainerViews.count)")
-        for container in weatherContainerViews where !container.isHidden {
-            let waypointIndex = container.tag
 
-            if let waypointInfo = waypoints.filter({$0.index == waypointIndex}).first,
+    private func updateWeatherIcons(_ waypoints: [WaypointInfo]) {
+        print("==== DEBUG: updateWeatherIcons ====")
+        print("weatherContainerViews count: \(weatherContainerViews.count)")
+        print("Active waypoints count: \(waypoints.count)")
+        print("Active waypoints indices: \(waypoints.map { $0.index })")
+
+        // Print all container visibility status
+        for (index, container) in weatherContainerViews.enumerated() {
+            print("Container \(index) - Hidden: \(container.isHidden)")
+        }
+
+        for (containerIndex, container) in weatherContainerViews.enumerated() where !container.isHidden {
+            let waypointIndex = container.tag
+            print("Processing container \(containerIndex) with tag \(waypointIndex)")
+
+            // Find matching waypoint
+            let matchingWaypoints = waypoints.filter { $0.index == waypointIndex }
+            print("Found \(matchingWaypoints.count) matching waypoints for index \(waypointIndex)")
+
+            if let waypointInfo = matchingWaypoints.first,
                let weather = waypointInfo.weather,
                let iconView = container.viewWithTag(100) as? UIImageView {
 
-                print("Showing weather: \(waypointInfo) at index \(waypointIndex) with name \(weather.iconName)")
+                print("Waypoint \(waypointIndex): Weather found - \(weather.weatherCode), icon name: \(weather.iconName)")
 
                 if let iconImage = UIImage(named: weather.iconName) {
+                    print("Icon image loaded successfully for \(weather.iconName)")
                     iconView.image = iconImage
                     iconView.isHidden = false
+                } else {
+                    print("⚠️ Failed to load icon image for \(weather.iconName)")
+                    iconView.isHidden = true
                 }
+
                 let containerColor = getWeatherColor(for: weather)
-                print(containerColor)
+                print("Weather color for container \(containerIndex): \(containerColor)")
                 container.backgroundColor = containerColor
                 container.layer.shadowColor = containerColor.withAlphaComponent(0.5).cgColor
+            } else {
+                print("⚠️ Container \(containerIndex): Missing waypoint info or weather data")
+                if let iconView = container.viewWithTag(100) as? UIImageView {
+                    iconView.isHidden = true
+                }
             }
         }
 
