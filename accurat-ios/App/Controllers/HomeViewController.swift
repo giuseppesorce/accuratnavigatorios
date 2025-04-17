@@ -15,7 +15,6 @@ class HomeViewController: UIViewController {
 
     lazy var bikeGpxWaypoints: [Waypoint] = {
         return [
-            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.8313835, longitude: 10.8708131), name: "Fossoli Nord"),
             Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.8413835, longitude: 10.8758131), name: "Budrione"),
             Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.8513835, longitude: 10.8738131), name: "Migliarina"),
             Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.7913835, longitude: 10.8138131), name: "Modena Nord"),
@@ -111,12 +110,9 @@ class HomeViewController: UIViewController {
 
         var waypointsToUse = bikeGpxWaypoints
 
-        if !useSimulation {
-            waypointsToUse.insert(Waypoint(coordinate: startingPoint, name: "Posizione attuale"), at: 0)
-        }
+        waypointsToUse.insert(Waypoint(coordinate: startingPoint, name: "Posizione attuale"), at: 0)
 
-        let coordinates = waypointsToUse.map { $0.coordinate }
-
+        
         let routeOptions = NavigationRouteOptions(waypoints: waypointsToUse, profileIdentifier: .cycling)
         routeOptions.includesSteps = true
         routeOptions.routeShapeResolution = .full
@@ -147,7 +143,7 @@ class HomeViewController: UIViewController {
                     customNavigationViewController.delegate = strongSelf
 
                     if strongSelf.useSimulation && customNavigationViewController.navigationService != nil {
-                        customNavigationViewController.navigationService.simulationSpeedMultiplier = 18.0
+                        customNavigationViewController.navigationService.simulationSpeedMultiplier = 3.0
                     }
                     
                     strongSelf.present(customNavigationViewController, animated: true, completion: nil)

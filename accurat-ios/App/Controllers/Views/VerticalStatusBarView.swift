@@ -189,11 +189,10 @@ class VerticalStatusBarView: UIView {
     private func createWeatherContainer(forIndex index: Int) -> UIView {
         let container = UIView()
         container.backgroundColor = UIStyleKit.Colors.weatherYellow
-        container.layer.cornerRadius = 20
+        container.layer.cornerRadius = 4
         container.clipsToBounds = true
-        container.tag = index // Store index in tag
+        container.tag = index
 
-        // Add shadow
         container.layer.shadowColor = UIStyleKit.Colors.weatherYellowShadow.cgColor
         container.layer.shadowOffset = CGSize(width: 0, height: 0)
         container.layer.shadowRadius = 5.53
@@ -204,14 +203,11 @@ class VerticalStatusBarView: UIView {
         iconView.tag = 100 // Tag to identify icon within container
         iconView.contentMode = .scaleAspectFit
         iconView.tintColor = UIStyleKit.Colors.textWhite
-        iconView.image = UIImage(named: "CL") // Default clear/sunny icon
-
         container.addSubview(iconView)
 
-        // Setup icon constraints
         iconView.snp.makeConstraints { make in
             make.center.equalToSuperview()
-            make.width.height.equalTo(20)
+            make.width.height.equalTo(15)
         }
 
         // Add inner shadow after layout
@@ -220,8 +216,8 @@ class VerticalStatusBarView: UIView {
             UIStyleKit.addInnerShadow(
                 to: containerRef,
                 color: UIStyleKit.Colors.innerShadow.cgColor,
-                radius: 2.76,
-                offset: CGSize(width: 0, height: 1.38)
+                radius: 4,
+                offset: CGSize(width: 2, height: 2)
             )
         }
 
@@ -234,6 +230,7 @@ class VerticalStatusBarView: UIView {
             make.centerX.equalToSuperview()
             make.width.height.equalTo(50)
         }
+
         verticalLine.snp.makeConstraints { make in
             make.centerX.equalToSuperview().offset(1)
             make.width.equalTo(6)
@@ -241,24 +238,49 @@ class VerticalStatusBarView: UIView {
             make.bottom.equalTo(bottomIconView.snp.top).offset(2)
         }
 
-        let availableHeight = UIScreen.main.bounds.height - 200
-        let waypointSpacing = availableHeight / CGFloat(weatherContainerViews.count + 1)
-
-        for (index, container) in weatherContainerViews.enumerated() {
-            container.snp.makeConstraints { make in
-                make.centerX.equalToSuperview()
-                make.top.equalTo(topLocationIcon.snp.bottom).offset(
-                    Int(waypointSpacing) * (index + 1)
-                )
-                make.width.height.equalTo(40)
-            }
-        }
-
         bottomIconView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
             make.bottom.equalToSuperview().inset(40)
             make.width.height.equalTo(50)
         }
+
+        // Prima impostiamo i vincoli di base per tutti i container
+        for container in weatherContainerViews {
+            container.snp.makeConstraints { make in
+                make.centerX.equalTo(verticalLine.snp.centerX)
+                make.width.height.equalTo(40)
+            }
+        }
+    }
+
+    private func updateWeatherContainerPositions() {
+        // Assicuriamoci che ci siano waypoint attivi
+        guard !viewModel.activeWaypoints.isEmpty, !weatherContainerViews.isEmpty else { return }
+
+        let lineHeight = self.verticalLine.frame.height
+        let topY = topLocationIcon.frame.maxY - 9 // Offset per avvicinare all'icona
+
+
+        let containerHeight: CGFloat = 25
+        let visibleContainers = viewModel.activeWaypoints.count
+
+        let spacing = lineHeight / CGFloat(visibleContainers + 1)
+        var visibleIndex = 0
+
+        for (index, container) in weatherContainerViews.enumerated() {
+            if index < viewModel.activeWaypoints.count && !container.isHidden {
+                visibleIndex += 1
+
+                // Calcoliamo la posizione equidistante
+                let yPosition = topY + (spacing * CGFloat(visibleIndex))
+                container.snp.remakeConstraints { make in
+                    make.centerX.equalTo(verticalLine.snp.centerX)
+                    make.top.equalToSuperview().offset(yPosition - containerHeight/2)
+                    make.width.height.equalTo(containerHeight)
+                }
+            }
+        }
+        layoutIfNeeded()
     }
 
     // MARK: - Content Update Methods
@@ -277,13 +299,15 @@ class VerticalStatusBarView: UIView {
                 weatherContainerViews[i].isHidden = false
             }
         }
-        
+
         if viewModel.waypointsMoreThanMax {
             topLocationIcon.isHidden = true
         } else {
             topLocationIcon.isHidden = false
         }
 
+        // Aggiorniamo le posizioni dei container
+        updateWeatherContainerPositions()
         updateLineColors()
     }
 
@@ -337,23 +361,22 @@ class VerticalStatusBarView: UIView {
         // Determine color based on weather type
         switch String(weatherPart) {
         case "cl", "fw": // Clear or fair/mostly sunny
-            return UIStyleKit.Colors.weatherYellow
 
+            return UIStyleKit.Colors.weatherYellow
         case "sc", "bk", "ov": // Partly cloudy, mostly cloudy, overcast
-            return UIColor(hex: "#3C7BF7") // Blue
+            return UIStyleKit.Colors.precipitationBlue
 
         case "r", "rw", "l", "zr", "zl": // Rain, rain showers, drizzle, freezing rain/drizzle
-            return UIColor(hex: "#6F3CFF") // Purple
+            return UIStyleKit.Colors.precipitationBlue
 
         case "s", "sw", "ip", "si": // Snow, snow showers, sleet, snow/sleet mix
-            return UIColor(hex: "#3C7BF7") // Blue
+            return UIStyleKit.Colors.precipitationBlue
 
         case "t": // Thunderstorms
-            return UIColor(hex: "#F45118") // Orange
+            return UIStyleKit.Colors.precipitationBlue
 
         case "f", "h", "br", "if", "zf": // Fog, haze, mist, ice fog, freezing fog
-            return UIColor(hex: "#6F3CFF") // Purple
-
+            return UIStyleKit.Colors.precipitationBlue
         default:
             return UIStyleKit.Colors.weatherYellow // Default yellow
         }
