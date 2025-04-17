@@ -146,6 +146,7 @@ class UIStyleKit {
         static let weatherYellowShadow = UIColor(hex: "#FAC608", alpha: 0.5)
         static let innerShadow = UIColor(hex: "#F3F3F3", alpha: 0.25)
         static let precipitationBlue = UIColor(hex: "#4D90D5")
+        static let precipitationPurple = UIColor(hex: "#6F3CFF")
         static let textWhite = UIColor.white
         static let textBlack = UIColor.black
         static let lightBackground = UIColor(hex: "#F3F3F3", alpha: 0.7) // #F3F3F3B2

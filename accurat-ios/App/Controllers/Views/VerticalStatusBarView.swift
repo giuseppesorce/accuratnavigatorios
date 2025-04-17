@@ -5,6 +5,9 @@ import MapboxDirections
 
 class VerticalStatusBarView: UIView {
     // MARK: - UI Elements
+    private var lineSegments: [UIView] = []
+    private let verticalLineContainer = UIView() // Contenitore per i segmenti di linea
+
     private let topLocationIcon = UIImageView()
     private let verticalLine = UIView()
     private let bottomIconView = UIImageView()
@@ -102,10 +105,10 @@ class VerticalStatusBarView: UIView {
         }
     }
 
-    private func setupVerticalLine() {
-        verticalLine.backgroundColor = UIStyleKit.Colors.weatherYellow
-        addSubview(verticalLine)
-    }
+//    private func setupVerticalLine() {
+//        verticalLine.backgroundColor = UIStyleKit.Colors.weatherYellow
+//        addSubview(verticalLine)
+//    }
 
     private func setupBottomContainer() {
         bottomIconView.backgroundColor = UIColor.clear
@@ -223,35 +226,6 @@ class VerticalStatusBarView: UIView {
 
         return container
     }
-    
-    private func setupConstraints() {
-        topLocationIcon.snp.makeConstraints { make in
-            make.top.equalToSuperview().offset(40)
-            make.centerX.equalToSuperview()
-            make.width.height.equalTo(50)
-        }
-
-        verticalLine.snp.makeConstraints { make in
-            make.centerX.equalToSuperview().offset(1)
-            make.width.equalTo(6)
-            make.top.equalTo(topLocationIcon.snp.bottom).offset(-9)
-            make.bottom.equalTo(bottomIconView.snp.top).offset(2)
-        }
-
-        bottomIconView.snp.makeConstraints { make in
-            make.centerX.equalToSuperview()
-            make.bottom.equalToSuperview().inset(40)
-            make.width.height.equalTo(50)
-        }
-
-        // Prima impostiamo i vincoli di base per tutti i container
-        for container in weatherContainerViews {
-            container.snp.makeConstraints { make in
-                make.centerX.equalTo(verticalLine.snp.centerX)
-                make.width.height.equalTo(40)
-            }
-        }
-    }
 
     private func updateWeatherContainerPositions() {
         // Assicuriamoci che ci siano waypoint attivi
@@ -283,9 +257,243 @@ class VerticalStatusBarView: UIView {
         layoutIfNeeded()
     }
 
-    // MARK: - Content Update Methods
+    private func updateLoadingState(_ isLoading: Bool) {
+        alpha = isLoading ? 0.7 : 1.0
+    }
 
+    private func updateLineColors() {
+        // We could customize line color based on various conditions
+        // For now using the default yellow color
+        verticalLine.backgroundColor = UIStyleKit.Colors.weatherYellow
+    }
+
+    // MARK: - Helper Methods
+
+    private func getWeatherColor(for weather: WeatherCondition) -> UIColor {
+        // Parse the weather code to get the main component
+        let weatherPart = weather.weatherCode.split(separator: ":").last?.lowercased() ?? ""
+
+        // Determine color based on weather type
+        switch String(weatherPart) {
+        case "cl", "fw": // Clear or fair/mostly sunny
+
+            return UIStyleKit.Colors.weatherYellow
+        case "sc", "bk": // Partly cloudy, mostly cloudy, overcast
+            return UIStyleKit.Colors.precipitationBlue
+
+        case "r", "rw", "l", "zr", "zl", "ov": // Rain, rain showers, drizzle, freezing rain/drizzle
+            return UIStyleKit.Colors.precipitationPurple
+
+        case "s", "sw", "ip", "si": // Snow, snow showers, sleet, snow/sleet mix
+            return UIStyleKit.Colors.precipitationBlue
+
+        case "t": // Thunderstorms
+            return UIStyleKit.Colors.precipitationBlue
+
+        case "f", "h", "br", "if", "zf": // Fog, haze, mist, ice fog, freezing fog
+            return UIStyleKit.Colors.precipitationBlue
+        default:
+            return UIStyleKit.Colors.weatherYellow // Default yellow
+        }
+    }
+
+
+    private func setupVerticalLine() {
+        // Rimuovi la linea singola e aggiungi il contenitore
+        verticalLineContainer.backgroundColor = UIColor.clear
+        addSubview(verticalLineContainer)
+
+        // La linea verticale originale diventa invisibile o può essere rimossa
+        verticalLine.backgroundColor = UIColor.clear
+        verticalLine.isHidden = true
+        addSubview(verticalLine)
+    }
+
+    private func setupConstraints() {
+        topLocationIcon.snp.makeConstraints { make in
+            make.top.equalToSuperview().offset(40)
+            make.centerX.equalToSuperview()
+            make.width.height.equalTo(50)
+        }
+
+        // Configura il contenitore della linea verticale
+        verticalLineContainer.snp.makeConstraints { make in
+            make.centerX.equalToSuperview().offset(1)
+            make.width.equalTo(6)
+            make.top.equalTo(topLocationIcon.snp.bottom).offset(-9)
+            make.bottom.equalTo(bottomIconView.snp.top).offset(2)
+        }
+
+        verticalLine.snp.makeConstraints { make in
+            make.centerX.equalToSuperview().offset(1)
+            make.width.equalTo(6)
+            make.top.equalTo(topLocationIcon.snp.bottom).offset(-9)
+            make.bottom.equalTo(bottomIconView.snp.top).offset(2)
+        }
+
+        bottomIconView.snp.makeConstraints { make in
+            make.centerX.equalToSuperview()
+            make.bottom.equalToSuperview().inset(40)
+            make.width.height.equalTo(50)
+        }
+
+        // Prima impostiamo i vincoli di base per tutti i container
+        for container in weatherContainerViews {
+            container.snp.makeConstraints { make in
+                make.centerX.equalTo(verticalLine.snp.centerX)
+                make.width.height.equalTo(40)
+            }
+        }
+    }
+
+    // Modificare il metodo updateLineSegments per usare colori solidi senza gradienti
+    private func updateLineSegments() {
+        // Rimuovi tutti i segmenti esistenti
+        for segment in lineSegments {
+            segment.removeFromSuperview()
+        }
+        lineSegments.removeAll()
+
+        let visibleContainers = weatherContainerViews.filter { !$0.isHidden }
+        guard !visibleContainers.isEmpty else {
+            // Se non ci sono contenitori visibili, crea una linea singola con il colore predefinito
+            let singleSegment = createLineSegment(color: UIStyleKit.Colors.weatherYellow)
+            verticalLineContainer.addSubview(singleSegment)
+            lineSegments.append(singleSegment)
+
+            singleSegment.snp.makeConstraints { make in
+                make.edges.equalToSuperview()
+            }
+
+            return
+        }
+
+        // Ordina i container per posizione Y (dall'alto verso il basso)
+        let sortedContainers = visibleContainers.sorted { $0.frame.minY < $1.frame.minY }
+
+        // 1. Segmento dall'icona superiore al primo container
+        if let firstContainer = sortedContainers.first {
+            // Usa il colore del primo container invece di weatherYellow
+            let topSegment = createLineSegment(color: firstContainer.backgroundColor ?? UIStyleKit.Colors.weatherYellow)
+            verticalLineContainer.addSubview(topSegment)
+            lineSegments.append(topSegment)
+
+            topSegment.snp.makeConstraints { make in
+                make.top.left.right.equalToSuperview()
+                make.bottom.equalTo(firstContainer.snp.centerY)
+            }
+        }
+
+        // 2. Segmenti tra i container
+        for i in 0..<sortedContainers.count - 1 {
+            let upperContainer = sortedContainers[i]
+            let lowerContainer = sortedContainers[i + 1]
+
+            // Colore container superiore
+            let upperColor = upperContainer.backgroundColor ?? UIStyleKit.Colors.weatherYellow
+            // Colore container inferiore
+            let lowerColor = lowerContainer.backgroundColor ?? UIStyleKit.Colors.weatherYellow
+
+            if upperColor == lowerColor {
+                // Se i colori sono uguali, crea un solo segmento
+                let segment = createLineSegment(color: upperColor)
+                verticalLineContainer.addSubview(segment)
+                lineSegments.append(segment)
+
+                segment.snp.makeConstraints { make in
+                    make.top.equalTo(upperContainer.snp.centerY)
+                    make.bottom.equalTo(lowerContainer.snp.centerY)
+                    make.left.right.equalToSuperview()
+                }
+            } else {
+                // Se i colori sono diversi, crea due segmenti con colori solidi
+                let middleY = (upperContainer.frame.maxY + lowerContainer.frame.minY) / 2
+
+                // Calcola la posizione esatta usando constraints
+                let upperContainerBottom = upperContainer.frame.maxY
+                let lowerContainerTop = lowerContainer.frame.minY
+                let transitionPoint = upperContainerBottom + ((lowerContainerTop - upperContainerBottom) / 2)
+
+                // Segmento superiore
+                let upperSegment = createLineSegment(color: upperColor)
+                verticalLineContainer.addSubview(upperSegment)
+                lineSegments.append(upperSegment)
+
+                upperSegment.snp.makeConstraints { make in
+                    make.top.equalTo(upperContainer.snp.centerY)
+                    make.left.right.equalToSuperview()
+                    // Usa un valore assoluto per bottom per evitare problemi di calcolo
+                    if let superview = upperSegment.superview {
+                        let bottomDistance = transitionPoint - superview.frame.minY
+                        make.height.equalTo(transitionPoint - upperContainer.center.y)
+                    }
+                }
+
+                // Segmento inferiore
+                let lowerSegment = createLineSegment(color: lowerColor)
+                verticalLineContainer.addSubview(lowerSegment)
+                lineSegments.append(lowerSegment)
+
+                lowerSegment.snp.makeConstraints { make in
+                    make.top.equalTo(upperSegment.snp.bottom)
+                    make.bottom.equalTo(lowerContainer.snp.centerY)
+                    make.left.right.equalToSuperview()
+                }
+            }
+        }
+
+        // 3. Segmento dall'ultimo container all'icona inferiore
+        if let lastContainer = sortedContainers.last {
+            let bottomSegment = createLineSegment(color: lastContainer.backgroundColor ?? UIStyleKit.Colors.weatherYellow)
+            verticalLineContainer.addSubview(bottomSegment)
+            lineSegments.append(bottomSegment)
+
+            bottomSegment.snp.makeConstraints { make in
+                make.bottom.left.right.equalToSuperview()
+                make.top.equalTo(lastContainer.snp.centerY)
+            }
+        }
+    }
+    // Crea un segmento di linea con colore specificato
+    private func createLineSegment(color: UIColor) -> UIView {
+        let segment = UIView()
+        segment.backgroundColor = color
+        segment.layer.cornerRadius = 4
+
+        segment.layer.shadowColor = color.withAlphaComponent(0.5).cgColor
+        segment.layer.shadowOffset = CGSize(width: 0, height: 0)
+        segment.layer.shadowRadius = 4
+        segment.layer.shadowOpacity = 1.0
+
+        DispatchQueue.main.async {
+            UIStyleKit.addInnerShadow(
+                to: segment,
+                color: UIStyleKit.Colors.innerShadow.cgColor,
+                radius: 4,
+                offset: CGSize(width: 4, height: 4)
+            )
+        }
+
+        return segment
+    }
+
+    // MARK: - Override dei metodi esistenti
+
+    // Aggiorna il metodo layoutSubviews per gestire i gradienti
+    override func layoutSubviews() {
+        super.layoutSubviews()
+
+        // Aggiorna i gradienti quando le dimensioni cambiano
+        for (index, segment) in lineSegments.enumerated() {
+            if let gradientLayer = segment.layer.sublayers?.first as? CAGradientLayer {
+                gradientLayer.frame = segment.bounds
+            }
+        }
+    }
+
+    // Modifica il metodo updateWeatherPointsWithWaypoints per aggiornare anche i segmenti
     private func updateWeatherPointsWithWaypoints(_ waypoints: [VerticalStatusBarViewModel.WaypointInfo]) {
+        // Mantieni il codice esistente
         // Hide all weather points initially
         for container in weatherContainerViews {
             container.isHidden = true
@@ -308,27 +516,31 @@ class VerticalStatusBarView: UIView {
 
         // Aggiorniamo le posizioni dei container
         updateWeatherContainerPositions()
-        updateLineColors()
-    }
 
+        // Questa chiamata è stata modificata - non usare più updateLineColors()
+        // updateLineColors()
+
+        // Aggiungi questa chiamata per aggiornare i segmenti colorati
+        // Importante: chiamare dopo updateWeatherContainerPositions
+        // perché abbiamo bisogno delle posizioni aggiornate dei container
+        DispatchQueue.main.async { [weak self] in
+            self?.updateLineSegments()
+        }
+    }
+    
     private func updateWeatherIcons(with conditions: [Int: WeatherCondition]) {
-        // For each visible container, update icon based on weather code
         for container in weatherContainerViews where !container.isHidden {
             let waypointIndex = container.tag
 
             if let weather = conditions[waypointIndex],
                let iconView = container.viewWithTag(100) as? UIImageView {
 
-                // Get weather icon name (derived from the weather code)
-                let weatherPart = weather.weatherCode.split(separator: ":").last ?? "CL"
-                let iconName = weather.isDay ? String(weatherPart) : "\(weatherPart)-night"
+                print("Showing weather: \(weather) at index \(waypointIndex)")
 
-                // Set icon image
-                if let iconImage = UIImage(named: iconName) {
+                if let iconImage = UIImage(named: weather.iconName) {
                     iconView.image = iconImage
                     iconView.isHidden = false
                 } else {
-                    // Fallback to default icon if image not found
                     iconView.isHidden = true
                 }
 
@@ -340,45 +552,9 @@ class VerticalStatusBarView: UIView {
                 container.layer.shadowColor = containerColor.withAlphaComponent(0.5).cgColor
             }
         }
-    }
 
-    private func updateLoadingState(_ isLoading: Bool) {
-        alpha = isLoading ? 0.7 : 1.0
-    }
-
-    private func updateLineColors() {
-        // We could customize line color based on various conditions
-        // For now using the default yellow color
-        verticalLine.backgroundColor = UIStyleKit.Colors.weatherYellow
-    }
-
-    // MARK: - Helper Methods
-
-    private func getWeatherColor(for weather: WeatherCondition) -> UIColor {
-        // Parse the weather code to get the main component
-        let weatherPart = weather.weatherCode.split(separator: ":").last?.lowercased() ?? ""
-
-        // Determine color based on weather type
-        switch String(weatherPart) {
-        case "cl", "fw": // Clear or fair/mostly sunny
-
-            return UIStyleKit.Colors.weatherYellow
-        case "sc", "bk", "ov": // Partly cloudy, mostly cloudy, overcast
-            return UIStyleKit.Colors.precipitationBlue
-
-        case "r", "rw", "l", "zr", "zl": // Rain, rain showers, drizzle, freezing rain/drizzle
-            return UIStyleKit.Colors.precipitationBlue
-
-        case "s", "sw", "ip", "si": // Snow, snow showers, sleet, snow/sleet mix
-            return UIStyleKit.Colors.precipitationBlue
-
-        case "t": // Thunderstorms
-            return UIStyleKit.Colors.precipitationBlue
-
-        case "f", "h", "br", "if", "zf": // Fog, haze, mist, ice fog, freezing fog
-            return UIStyleKit.Colors.precipitationBlue
-        default:
-            return UIStyleKit.Colors.weatherYellow // Default yellow
+        DispatchQueue.main.async { [weak self] in
+            self?.updateLineSegments()
         }
     }
 }

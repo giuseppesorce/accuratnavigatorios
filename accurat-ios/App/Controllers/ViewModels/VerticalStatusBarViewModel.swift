@@ -1,10 +1,3 @@
-//
-//  VerticalStatusBarViewModel.swift
-//  accurat-ios
-//
-//  Created by Federico Malagoni on 07/04/25.
-//
-
 import Foundation
 import CoreLocation
 import MapboxDirections
@@ -19,7 +12,7 @@ class VerticalStatusBarViewModel: ObservableObject {
     @Published var waypointsMoreThanMax: Bool = false
     @Published var errorMessage: String?
     @Published var currentLocation: CLLocationCoordinate2D? = nil
-    
+
     // MARK: - Private Properties
     private let weatherService = XWeatherService()
     private var weatherUpdateTimer: Timer?
@@ -35,8 +28,9 @@ class VerticalStatusBarViewModel: ObservableObject {
         let waypoint: Waypoint
         let coordinate: CLLocationCoordinate2D?
         var isPassed: Bool = false
+        var weather: WeatherCondition?
     }
-    
+
     // MARK: - Public Methods
     func setupWaypoints(waypoints: [Waypoint]) {
         // Utilizziamo i waypoint forniti da HomeViewController
@@ -55,7 +49,6 @@ class VerticalStatusBarViewModel: ObservableObject {
     }
 
     func updateUserLocation(userLocation: CLLocationCoordinate2D, routeProgress: RouteProgress) {
-
         self.currentLocation = userLocation
 
         // Determina quali waypoint sono stati superati
@@ -63,6 +56,9 @@ class VerticalStatusBarViewModel: ObservableObject {
 
         // Aggiorna la lista dei waypoint attivi
         updateActiveWaypoints()
+
+        // Aggiorna le condizioni meteo per includerle nella UI
+        updateWeatherDisplayData()
     }
 
     func stopUpdates() {
@@ -70,17 +66,56 @@ class VerticalStatusBarViewModel: ObservableObject {
         weatherUpdateTimer = nil
     }
 
+    // MARK: - Internal Methods per Test
+
+    // Rende accessibile per i test
+    func updateWaypointPassedStatus(userLocation: CLLocationCoordinate2D, routeProgress: RouteProgress) {
+        print("DEBUG: Updating waypoint status for user at \(userLocation.latitude), \(userLocation.longitude)")
+
+        // Per ogni waypoint, verifichiamo se è stato superato
+        for i in 0..<allWaypoints.count {
+            // Calcola la distanza tra la posizione dell'utente e il waypoint
+            let waypointCoordinate = allWaypoints[i].waypoint.coordinate
+            let waypointLocation = CLLocation(latitude: waypointCoordinate.latitude,
+                                             longitude: waypointCoordinate.longitude)
+            let userLoc = CLLocation(latitude: userLocation.latitude,
+                                     longitude: userLocation.longitude)
+            let distance = userLoc.distance(from: waypointLocation)
+
+            print("DEBUG: Waypoint \(i) - Position: \(waypointCoordinate.latitude), \(waypointCoordinate.longitude)")
+            print("DEBUG: Distance to waypoint \(i): \(distance) meters, Previously passed: \(allWaypoints[i].isPassed)")
+
+            // Segna come superato se l'utente è a meno di 50 metri dal waypoint o l'ha già passato
+            if distance < 50 || allWaypoints[i].isPassed {
+                let wasPreviouslyPassed = allWaypoints[i].isPassed
+                allWaypoints[i].isPassed = true
+
+                if !wasPreviouslyPassed {
+                    print("DEBUG: 🚩 Waypoint \(i) NEWLY PASSED 🚩")
+                }
+            }
+
+            print("DEBUG: After check - Waypoint \(i) passed status: \(allWaypoints[i].isPassed)")
+        }
+
+        // Print summary of all waypoints status
+        print("DEBUG: Waypoints status summary:")
+        for i in 0..<allWaypoints.count {
+            print("DEBUG: Waypoint \(i): \(allWaypoints[i].isPassed ? "✅ PASSED" : "⏳ NOT PASSED YET")")
+        }
+    }
+
     // MARK: - Private Methods
     private func updateActiveWaypoints() {
         // Filtra i waypoint non ancora superati
         let nonPassedWaypoints = allWaypoints.filter { !$0.isPassed }
 
-        if (nonPassedWaypoints.count > maxWaypoints) {
-            waypointsMoreThanMax = true
-        }
+        waypointsMoreThanMax = nonPassedWaypoints.count > maxWaypoints
+
         // Prendi solo i primi maxWaypoints
         activeWaypoints = Array(nonPassedWaypoints.prefix(maxWaypoints))
 
+        print("activeWaypoints: \(activeWaypoints.count)")
         // Se ci sono più waypoint di quelli che possiamo mostrare, assicuriamoci
         // che l'ultimo waypoint attivo non sia la destinazione finale (a meno che non sia l'unico rimasto)
         if nonPassedWaypoints.count > maxWaypoints && activeWaypoints.count == maxWaypoints {
@@ -94,23 +129,28 @@ class VerticalStatusBarViewModel: ObservableObject {
             }
         }
     }
-    
-    private func updateWaypointPassedStatus(userLocation: CLLocationCoordinate2D, routeProgress: RouteProgress) {
-        // Per ogni waypoint, verifichiamo se è stato superato
-        for i in 0..<allWaypoints.count {
-            // Calcola la distanza tra la posizione dell'utente e il waypoint
-            let waypointCoordinate = allWaypoints[i].waypoint.coordinate
-            let waypointLocation = CLLocation(latitude: waypointCoordinate.latitude,
-                                             longitude: waypointCoordinate.longitude)
-            let userLoc = CLLocation(latitude: userLocation.latitude,
-                                     longitude: userLocation.longitude)
-            let distance = userLoc.distance(from: waypointLocation)
 
-            // Segna come superato se l'utente è a meno di 50 metri dal waypoint o l'ha già passato
-            if distance < 50 || allWaypoints[i].isPassed {
-                allWaypoints[i].isPassed = true
+    // Metodo che aggiorna il dizionario waypointWeatherConditions basandosi sui waypoint attivi
+    private func updateWeatherDisplayData() {
+        // Pulisci il dizionario esistente per evitare dati obsoleti
+        var updatedConditions: [Int: WeatherCondition] = [:]
+        
+        // Aggiorna solo per i waypoint attivi
+        for waypoint in activeWaypoints {
+            // Se abbiamo già le condizioni meteo per questo waypoint, le riutilizziamo
+            if let weather = allWaypoints[waypoint.index].weather {
+                updatedConditions[waypoint.index] = weather
+            } else if let existingWeather = waypointWeatherConditions[waypoint.index] {
+                // Altrimenti, se ci sono nel dizionario esistente, le usiamo
+                updatedConditions[waypoint.index] = existingWeather
+
+                // E aggiorniamo anche il modello interno
+                var updatedWaypoint = allWaypoints[waypoint.index]
+                updatedWaypoint.weather = existingWeather
+                allWaypoints[waypoint.index] = updatedWaypoint
             }
         }
+        waypointWeatherConditions = updatedConditions
     }
 
     private func startWeatherUpdateTimer() {
@@ -171,7 +211,16 @@ class VerticalStatusBarViewModel: ObservableObject {
 
                     switch result {
                     case .success(let weather):
+                        // Aggiorna il dizionario delle condizioni meteo
                         self.waypointWeatherConditions[waypoint.index] = weather
+
+                        // Aggiorna anche il modello di dati interno
+                        if waypoint.index < self.allWaypoints.count {
+                            var updatedWaypoint = self.allWaypoints[waypoint.index]
+                            updatedWaypoint.weather = weather
+                            self.allWaypoints[waypoint.index] = updatedWaypoint
+                        }
+
                         successfulRequests += 1
                         print("✅ Weather update successful for waypoint #\(waypoint.index): \(weather)")
 
@@ -208,8 +257,12 @@ class VerticalStatusBarViewModel: ObservableObject {
             if self.errorMessage != nil {
                 print("⚠️ Final error status: \(self.errorMessage ?? "no error")")
             }
+
+            // Aggiorna i dati del meteo per la UI dopo che tutte le richieste sono completate
+            self.updateWeatherDisplayData()
         }
     }
+
     // Metodo per forzare un aggiornamento del meteo se è passato troppo tempo
     func checkAndUpdateWeatherIfNeeded() {
         let currentTime = Date()

@@ -15,15 +15,23 @@ class HomeViewController: UIViewController {
 
     lazy var bikeGpxWaypoints: [Waypoint] = {
         return [
-            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.8413835, longitude: 10.8758131), name: "Budrione"),
-            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.8513835, longitude: 10.8738131), name: "Migliarina"),
-            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.7913835, longitude: 10.8138131), name: "Modena Nord"),
-            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.9813835, longitude: 10.9338131), name: "Mirandola Centro"),
-            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.8063835, longitude: 10.7358131), name: "Campogalliano"),
-            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 45.0113835, longitude: 10.8958131), name: "San Felice"),
-            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.7713835, longitude: 10.9758131), name: "Bastiglia"),
-            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.9513835, longitude: 10.7258131), name: "Reggiolo"),
-            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.8163835, longitude: 11.0258131), name: "Finale Emilia")
+            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.8413835, longitude: 10.8758131),
+                     name: "Budrione"),
+            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.8513835, longitude: 10.8738131),
+                     name: "Migliarina"),
+            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.7913835, longitude: 10.8138131),
+                     name: "Modena Nord"),
+            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.9813835, longitude: 10.9338131),
+                     name: "Mirandola Centro"),
+            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 41.984920, longitude: 15.004287),
+                     name: "Molise"),
+            
+//            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.2478638, longitude: 12.3118436), name: "Cervia"),
+//            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 41.984920, longitude: 15.004287), name: "Molise"),
+
+//            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.7713835, longitude: 10.9758131), name: "Bastiglia"),
+//            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.9513835, longitude: 10.7258131), name: "Reggiolo"),
+//            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.8163835, longitude: 11.0258131), name: "Finale Emilia")
         ]
     }()
 
