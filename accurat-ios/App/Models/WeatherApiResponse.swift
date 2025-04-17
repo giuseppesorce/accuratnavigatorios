@@ -183,11 +183,4 @@ struct WeatherCondition {
             }
         }
     }
-
-    var iconName: String {
-        let weatherComponent = weatherCode.split(separator: ":").last ?? ""
-        let weatherKey = String(weatherComponent)
-
-        return isDay ? weatherKey : "\(weatherKey)-night"
-    }
 }
