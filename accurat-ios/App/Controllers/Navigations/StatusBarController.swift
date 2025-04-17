@@ -16,14 +16,19 @@ class StatusBarController {
     // Controllers
     private var parentViewController: UIViewController
     private var weatherViewModel: WeatherViewModel
-    private var verticalViewModel = VerticalStatusBarViewModel()
+    private var verticalViewModel: VerticalStatusBarViewModel
+
     private var navigationService: NavigationDistanceService?
 
     // State tracking
     private var bannerFrame: CGRect = .zero
 
-    init(parent: UIViewController, viewModel: WeatherViewModel) {
+    init(parent: UIViewController,
+         viewModel: WeatherViewModel,
+         verticalViewModel: VerticalStatusBarViewModel) {
+        
         self.parentViewController = parent
+        self.verticalViewModel = verticalViewModel
         self.weatherViewModel = viewModel
     }
 

@@ -22,9 +22,9 @@ class VerticalStatusBarView: UIView {
         setupUI()
         updateContent()
 
-        viewModel.onDataChanged = { [weak self] in
-            self?.updateContent()
-        }
+//        viewModel.onDataChanged = { [weak self] in
+//            self?.updateContent()
+//        }
     }
 
     required init?(coder: NSCoder) {
@@ -277,9 +277,6 @@ class VerticalStatusBarView: UIView {
     
     // MARK: - Content Update
     private func updateContent() {
-        // Update the visibility of warnings
-        warningContainer.isHidden = !viewModel.hasWarning
-
         // Update line colors based on weather conditions
         updateLineColors()
 
@@ -291,14 +288,7 @@ class VerticalStatusBarView: UIView {
     }
 
     private func updateLineColors() {
-        // Example: Change line colors based on weather conditions
-        if viewModel.weatherStatus.lowercased() == "rainy" {
-            verticalLine.backgroundColor = UIColor(hex: "#6F3CFF") // Purple for rainy
-        } else if viewModel.hasWarning {
-            verticalLine.backgroundColor = UIColor(hex: "#F45118") // Orange for warning
-        } else {
-            verticalLine.backgroundColor = UIStyleKit.Colors.weatherYellow // Default yellow
-        }
+
     }
 
     private func updateWeatherPoints() {

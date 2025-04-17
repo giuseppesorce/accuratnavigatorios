@@ -21,7 +21,7 @@ class WeatherViewModel: ObservableObject {
     func updateDistance(distance: String) {
         self.distanceRemaining = distance
     }
-    
+
     // Fetch both weather and road conditions at once
     func updateConditions(at coordinate: CLLocationCoordinate2D) {
         isLoading = true

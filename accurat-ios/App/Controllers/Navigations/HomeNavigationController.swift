@@ -13,6 +13,8 @@ class HomeNavigationController: NavigationViewController {
     private var statusBarController: StatusBarController?
 
     private let weatherViewModel = WeatherViewModel()
+    private let verticalStatusBarViewModel = VerticalStatusBarViewModel()
+    
     private var weatherUpdateTimer: Timer?
 
     override func viewDidLoad() {
@@ -116,7 +118,7 @@ class HomeNavigationController: NavigationViewController {
     
     private func setupComponents() {
         statusBarController = StatusBarController(parent: self,
-                                                  viewModel: weatherViewModel)
+                                                  viewModel: weatherViewModel, verticalViewModel: verticalStatusBarViewModel)
         statusBarController?.setup()
     }
 
