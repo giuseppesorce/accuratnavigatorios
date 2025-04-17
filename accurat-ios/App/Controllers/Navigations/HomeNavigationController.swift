@@ -14,7 +14,7 @@ class HomeNavigationController: NavigationViewController {
 
     private let weatherViewModel = WeatherViewModel()
     private let verticalStatusBarViewModel = VerticalStatusBarViewModel()
-    
+
     private var weatherUpdateTimer: Timer?
 
     override func viewDidLoad() {
@@ -26,10 +26,36 @@ class HomeNavigationController: NavigationViewController {
             self.setupComponents()
         }
 
+        // Inizializza i waypoints per la barra di stato verticale
+        setupVerticalStatusBar()
+
         subscribeToRouteProgress()
         customizeUserLocationIcon()
 
         repositionAttributionButton()
+    }
+
+    private func setupVerticalStatusBar() {
+        let route = navigationService.route
+        // Estrai i waypoint dalla route
+        let waypoints = route.legs.map { $0.destination! }
+
+        // Se abbiamo un punto di partenza, aggiungiamolo all'inizio
+        var allWaypoints = waypoints
+        if let origin = route.legs.first?.source {
+            allWaypoints.insert(origin, at: 0)
+        }
+
+        // Inizializza il viewmodel con i waypoint
+        verticalStatusBarViewModel.setupWaypoints(waypoints: allWaypoints)
+
+        // Aggiorna subito le condizioni per la posizione attuale
+        if let location = navigationService.router.location?.coordinate {
+            verticalStatusBarViewModel.updateUserLocation(
+                userLocation: location,
+                routeProgress: navigationService.routeProgress
+            )
+        }
     }
 
     private func repositionAttributionButton() {
@@ -39,9 +65,9 @@ class HomeNavigationController: NavigationViewController {
         attributionOptions.position = .bottomLeading
         attributionOptions.margins = CGPoint(x: 10, y: 10)
 
-//        var compassOptions = mapView.ornaments.options.compass
-//        compassOptions.visibility = .hidden
-//        mapView.ornaments.options.compass = compassOptions
+        //        var compassOptions = mapView.ornaments.options.compass
+        //        compassOptions.visibility = .hidden
+        //        mapView.ornaments.options.compass = compassOptions
         mapView.ornaments.options.attributionButton = attributionOptions
 
         var logoOptions = mapView.ornaments.options.logo
@@ -78,6 +104,7 @@ class HomeNavigationController: NavigationViewController {
         super.viewWillDisappear(animated)
 
         stopWeatherUpdates()
+        verticalStatusBarViewModel.stopUpdates()
     }
 
     private func customizeUserLocationIcon() {
@@ -115,10 +142,11 @@ class HomeNavigationController: NavigationViewController {
         let route = navigationService.route
         navigationMapView?.show([route], legIndex:navigationService.routeProgress.legIndex)
     }
-    
+
     private func setupComponents() {
         statusBarController = StatusBarController(parent: self,
-                                                  viewModel: weatherViewModel, verticalViewModel: verticalStatusBarViewModel)
+                                                  viewModel: weatherViewModel,
+                                                  verticalViewModel: verticalStatusBarViewModel)
         statusBarController?.setup()
     }
 
@@ -160,11 +188,29 @@ class HomeNavigationController: NavigationViewController {
     @objc private func didUpdateRoute(_ notification: Notification) {
         if let routeProgress = notification.userInfo?[RouteController.NotificationUserInfoKey.routeProgressKey] as? RouteProgress {
             weatherViewModel.updateRouteRoadConditions(for: routeProgress.route)
+
+            // Quando la rotta viene ricalcolata, aggiorna anche i waypoint per la barra verticale
+            setupVerticalStatusBar()
         }
     }
 
     @objc private func didUpdateProgress(_ notification: Notification) {
-        if let routeProgress = notification.userInfo?[RouteController.NotificationUserInfoKey.routeProgressKey] as? RouteProgress {
+        if let routeProgress = notification.userInfo?[RouteController.NotificationUserInfoKey.routeProgressKey] as? RouteProgress,
+           let location = navigationService.router.location?.coordinate {
+
+            // Aggiorna i waypoint in base alla posizione attuale dell'utente
+            verticalStatusBarViewModel.updateUserLocation(
+                userLocation: location,
+                routeProgress: routeProgress
+            )
+
+            // Aggiorna la distanza rimanente
+            let formatter = DistanceFormatter()
+            let distanceRemaining = formatter.string(from: routeProgress.distanceRemaining)
+            weatherViewModel.updateDistance(distance: distanceRemaining)
+
+            // Controlla se è necessario aggiornare il meteo dei waypoint
+            verticalStatusBarViewModel.checkAndUpdateWeatherIfNeeded()
 
             let currentDistance = routeProgress.distanceTraveled
             let updateInterval = 5000.0  // 5 kilometers in meters

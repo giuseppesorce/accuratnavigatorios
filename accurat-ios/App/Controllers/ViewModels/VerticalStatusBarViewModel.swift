@@ -87,12 +87,6 @@ class VerticalStatusBarViewModel: ObservableObject {
     }
     
     private func updateWaypointPassedStatus(userLocation: CLLocationCoordinate2D, routeProgress: RouteProgress) {
-        // Distanza percorsa finora
-        let distanceTraveled = routeProgress.distanceTraveled
-
-        // Distanza totale del percorso è accessibile attraverso la proprietà route
-        let totalDistance = routeProgress.route.distance
-
         // Per ogni waypoint, verifichiamo se è stato superato
         for i in 0..<allWaypoints.count {
             // Calcola la distanza tra la posizione dell'utente e il waypoint

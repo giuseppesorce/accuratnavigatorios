@@ -1,6 +1,7 @@
 import UIKit
 import SnapKit
 import Combine
+import MapboxDirections
 
 class VerticalStatusBarView: UIView {
     // MARK: - UI Elements
@@ -14,21 +15,55 @@ class VerticalStatusBarView: UIView {
     // MARK: - Properties
     private var viewModel: VerticalStatusBarViewModel
     private var weatherContainerViews: [UIView] = []
+    private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
     init(viewModel: VerticalStatusBarViewModel) {
         self.viewModel = viewModel
         super.init(frame: .zero)
         setupUI()
-        updateContent()
-
-//        viewModel.onDataChanged = { [weak self] in
-//            self?.updateContent()
-//        }
+        bindViewModel()
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    // MARK: - ViewModel Binding
+    private func bindViewModel() {
+        // Osserva i cambiamenti nei waypoint attivi
+        viewModel.$activeWaypoints
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] waypoints in
+                self?.updateWeatherPointsWithWaypoints(waypoints)
+            }
+            .store(in: &cancellables)
+
+        // Osserva i cambiamenti nelle condizioni meteo
+        viewModel.$waypointWeatherConditions
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] conditions in
+                self?.updateWeatherIcons(with: conditions)
+            }
+            .store(in: &cancellables)
+
+        // Osserva lo stato di caricamento
+        viewModel.$isLoading
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] isLoading in
+                self?.updateLoadingState(isLoading)
+            }
+            .store(in: &cancellables)
+
+        // Osserva gli errori
+        viewModel.$errorMessage
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] error in
+                if let error = error {
+                    print("Errore nella barra verticale: \(error)")
+                }
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - UI Setup
@@ -93,6 +128,7 @@ class VerticalStatusBarView: UIView {
         warningContainer.layer.shadowOffset = CGSize(width: 0, height: 0)
         warningContainer.layer.shadowRadius = 5.53
         warningContainer.layer.shadowOpacity = 1.0
+        warningContainer.isHidden = true // Nascosto di default, mostrato solo quando necessario
         addSubview(warningContainer)
 
         // Warning icon
@@ -124,10 +160,11 @@ class VerticalStatusBarView: UIView {
         addSubview(bottomContainer)
 
         // Bottom icon
-        bottomIconView.backgroundColor = UIColor(hex: "#3C7BF7") // Blue
+        bottomIconView.backgroundColor = UIColor.clear
         bottomIconView.layer.cornerRadius = 10
         bottomIconView.clipsToBounds = true
         bottomIconView.contentMode = .scaleAspectFit
+        bottomIconView.image = UIImage(named: "destination")
         bottomContainer.addSubview(bottomIconView)
 
         // Add inner shadow after layout
@@ -154,30 +191,18 @@ class VerticalStatusBarView: UIView {
             let container = createWeatherContainer(forIndex: i)
             weatherContainerViews.append(container)
             addSubview(container)
+
+            // Nascondi tutti i contenitori all'inizio
+            container.isHidden = true
         }
     }
 
     private func createWeatherContainer(forIndex index: Int) -> UIView {
-        // Determine weather type (alternating for demo purposes)
-        let weatherType = index % 3
-
         let container = UIView()
-        if weatherType == 0 {
-            // Rain weather (purple)
-            container.backgroundColor = UIColor(hex: "#6F3CFF") // Purple
-            container.tag = 0 // Tag for rain
-        } else if weatherType == 1 {
-            // Warning (orange)
-            container.backgroundColor = UIColor(hex: "#F45118") // Orange
-            container.tag = 1 // Tag for warning
-        } else {
-            // Sunny (yellow)
-            container.backgroundColor = UIStyleKit.Colors.weatherYellow
-            container.tag = 2 // Tag for sunny
-        }
-
+        container.backgroundColor = UIStyleKit.Colors.weatherYellow // Default color
         container.layer.cornerRadius = 20
         container.clipsToBounds = true
+        container.tag = index // Conserviamo l'indice nel tag
 
         // Add shadow based on container color
         container.layer.shadowColor = container.backgroundColor?.withAlphaComponent(0.5).cgColor
@@ -185,21 +210,12 @@ class VerticalStatusBarView: UIView {
         container.layer.shadowRadius = 5.53
         container.layer.shadowOpacity = 1.0
 
-        // Add icon based on weather type
+        // Add icon (default icon)
         let iconView = UIImageView()
+        iconView.tag = 100 // Tag per identificare l'icona all'interno del container
         iconView.contentMode = .scaleAspectFit
         iconView.tintColor = UIStyleKit.Colors.textWhite
-
-        if weatherType == 0 {
-            // Rain icon
-            iconView.image = UIImage(named: "drop")
-        } else if weatherType == 1 {
-            // Warning icon
-            iconView.image = UIImage(named: "alert")
-        } else {
-            // Sun icon
-            iconView.image = UIImage(named: "sunny")
-        }
+        iconView.image = UIImage(named: "sunny") // Default icon
 
         container.addSubview(iconView)
 
@@ -227,13 +243,13 @@ class VerticalStatusBarView: UIView {
         verticalLine.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
             make.width.equalTo(4)
-            make.top.equalTo(topLocationIcon.snp.bottom)
-            make.bottom.equalTo(bottomContainer.snp.top)
+            make.top.equalTo(topLocationIcon.snp.bottom).offset(5)
+            make.bottom.equalTo(bottomContainer.snp.top).offset(-5)
         }
 
         // Top location icon - now directly on main view
         topLocationIcon.snp.makeConstraints { make in
-            make.top.equalToSuperview()
+            make.top.equalToSuperview().offset(40) // Distanza dal bordo superiore
             make.centerX.equalToSuperview()
             make.width.height.equalTo(40)
         }
@@ -251,20 +267,25 @@ class VerticalStatusBarView: UIView {
             make.width.height.equalTo(20)
         }
 
-        // Position weather containers along the vertical line
-        let totalSpacing = (UIScreen.main.bounds.height - 200) / CGFloat(weatherContainerViews.count + 1)
+        // Distanza per distribuire i waypoints uniformemente
+        let availableHeight = UIScreen.main.bounds.height - 220 // Sottraiamo lo spazio per top e bottom
+        let waypointSpacing = availableHeight / CGFloat(weatherContainerViews.count + 1)
 
+        // Position weather containers along the vertical line
         for (index, container) in weatherContainerViews.enumerated() {
             container.snp.makeConstraints { make in
                 make.centerX.equalToSuperview()
-                make.top.equalTo(warningContainer.snp.bottom).offset(Int(totalSpacing) * (index + 1))
+                make.top.equalTo(topLocationIcon.snp.bottom).offset(
+                    Int(waypointSpacing) * (index + 1)
+                )
                 make.width.height.equalTo(40)
             }
         }
 
+        // Bottom container (destination icon)
         bottomContainer.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.bottom.equalToSuperview().inset(10)
+            make.bottom.equalToSuperview().inset(40) // Distanza dal bordo inferiore
             make.width.height.equalTo(40)
         }
 
@@ -274,32 +295,115 @@ class VerticalStatusBarView: UIView {
             make.width.height.equalTo(20)
         }
     }
-    
-    // MARK: - Content Update
-    private func updateContent() {
-        // Update line colors based on weather conditions
+
+    // MARK: - Content Update Methods
+
+    private func updateWeatherPointsWithWaypoints(_ waypoints: [VerticalStatusBarViewModel.WaypointInfo]) {
+        // Nascondi tutti i punti meteo
+        for container in weatherContainerViews {
+            container.isHidden = true
+        }
+
+        // Mostra solo i punti per i waypoint attivi
+        for (index, waypoint) in waypoints.enumerated() {
+            if index < weatherContainerViews.count {
+                weatherContainerViews[index].isHidden = false
+
+                // Se abbiamo più di 6 waypoint e questo è l'ultimo, mostriamo l'icona dei puntini
+                if waypoints.count > 6 && index == 5 && waypoints.count > 6 {
+                    if let iconView = weatherContainerViews[index].viewWithTag(100) as? UIImageView {
+                        iconView.image = UIImage(named: "more") // Icona per "più waypoint"
+                    }
+                }
+            }
+        }
+
+        // Mostra la destinazione finale solo se abbiamo meno di 6 waypoint
+        bottomContainer.isHidden = waypoints.count > 6
+
+        // Aggiorna il colore della linea verticale
         updateLineColors()
-
-        // Update weather points (this would use real data from the view model)
-        updateWeatherPoints()
-
-        // Update the bottom icon based on conditions
-        updateBottomIcon()
     }
 
-    private func updateLineColors() {
+    private func updateWeatherIcons(with conditions: [Int: WeatherCondition]) {
+        // Per ogni container visibile, aggiorna l'icona in base al codice meteo
+        for container in weatherContainerViews where !container.isHidden {
+            let waypointIndex = container.tag
 
-    }
+            if let weather = conditions[waypointIndex],
+               let iconView = container.viewWithTag(100) as? UIImageView {
 
-    private func updateWeatherPoints() {
-        for (index, container) in weatherContainerViews.enumerated() {
-            // Example logic - you would replace this with your actual data logic
-            let shouldShow = index < 6 // Show max 6 points as specified
-            container.isHidden = true // !shouldShow
+                // Imposta l'icona in base al codice meteo
+                let iconName = getWeatherIconName(for: weather)
+                iconView.image = UIImage(named: iconName)
+
+                // Imposta il colore del container in base al tipo di meteo
+                let containerColor = getWeatherColor(for: weather)
+                container.backgroundColor = containerColor
+
+                // Aggiorna anche il colore dell'ombra
+                container.layer.shadowColor = containerColor.withAlphaComponent(0.5).cgColor
+            }
         }
     }
 
-    private func updateBottomIcon() {
-        bottomIconView.image = UIImage(named: "user_gps")
+    private func updateLoadingState(_ isLoading: Bool) {
+        // Puoi aggiungere un indicatore di caricamento se necessario
+        alpha = isLoading ? 0.7 : 1.0
+    }
+
+    private func updateLineColors() {
+        // Qui puoi personalizzare il colore della linea in base alle condizioni meteo
+        // Per ora usiamo il colore giallo predefinito
+        verticalLine.backgroundColor = UIStyleKit.Colors.weatherYellow
+    }
+
+    // MARK: - Helper Methods
+
+    private func getWeatherIconName(for weather: WeatherCondition) -> String {
+        // Converti il codice meteo nel nome dell'icona corrispondente
+        // Questo è un esempio - dovresti adattarlo alle tue icone reali
+        switch weather.code {
+        case "clear", "sunny":
+            return "sunny"
+        case "partly-cloudy", "mostly-cloudy":
+            return "partly-cloudy"
+        case "cloudy":
+            return "cloudy"
+        case "rain", "showers":
+            return "rain"
+        case "snow", "flurries":
+            return "snow"
+        case "thunderstorm":
+            return "thunderstorm"
+        case "fog", "haze":
+            return "fog"
+        case "wind":
+            return "wind"
+        default:
+            return "sunny" // Icona predefinita
+        }
+    }
+
+    private func getWeatherColor(for weather: WeatherCondition) -> UIColor {
+        // Converti il codice meteo nel colore del container
+        switch weather.code {
+        case "clear", "sunny":
+            return UIStyleKit.Colors.weatherYellow
+        case "partly-cloudy", "mostly-cloudy", "cloudy":
+            return UIColor(hex: "#3C7BF7") // Blu
+        case "rain", "showers":
+            return UIColor(hex: "#6F3CFF") // Viola
+        case "snow", "flurries":
+            return UIColor(hex: "#3C7BF7") // Blu
+        case "thunderstorm":
+            return UIColor(hex: "#F45118") // Arancione
+        case "fog", "haze":
+            return UIColor(hex: "#6F3CFF") // Viola
+        case "wind":
+            return UIColor(hex: "#3C7BF7") // Blu
+        default:
+            return UIStyleKit.Colors.weatherYellow
+        }
     }
 }
