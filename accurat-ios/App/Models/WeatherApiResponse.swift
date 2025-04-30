@@ -179,7 +179,7 @@ struct WeatherCondition {
             case "CL": return "Clear"
             case "FW": return "Fair/mostly clear"
             case "SC", "BK", "OV": return "Cloudy"
-            default: return weatherDescription
+            default: return self.weatherDescription
             }
         }
     }

@@ -2,9 +2,6 @@
 <Workspace
    version = "1.0">
    <FileRef
-      location = "group:GOTOES_3169727344052909.gpx">
-   </FileRef>
-   <FileRef
       location = "group:accurat-ios.xcodeproj">
    </FileRef>
    <FileRef

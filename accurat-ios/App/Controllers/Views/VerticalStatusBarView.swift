@@ -243,38 +243,14 @@ class VerticalStatusBarView: UIView {
     }
 
     private func updateLoadingState(_ isLoading: Bool) {
-        alpha = isLoading ? 0.7 : 1.0
+        alpha = 1.0// isLoading ? 0.7 : 1.0
     }
-
+    
     private func updateLineColors() {
         verticalLine.backgroundColor = UIStyleKit.Colors.weatherYellow
     }
 
     // MARK: - Helper Methods
-
-    private func getWeatherColor(for weather: WeatherCondition) -> UIColor {
-        // Parse the weather code to get the main component
-        let weatherPart = weather.weatherCode.split(separator: ":").last?.lowercased() ?? ""
-
-        print("weather is \(weather) - weatherPart \(weatherPart)")
-        // Determine color based on weather type
-        switch String(weatherPart) {
-        case "cl", "fw": // Clear or fair/mostly sunny
-            return UIStyleKit.Colors.weatherYellow
-        case "sc", "bk": // Partly cloudy, mostly cloudy, overcast
-            return UIStyleKit.Colors.precipitationBlue
-        case "r", "rw", "l", "zr", "zl", "ov": // Rain, rain showers, drizzle, freezing rain/drizzle
-            return UIStyleKit.Colors.precipitationPurple
-        case "s", "sw", "ip", "si": // Snow, snow showers, sleet, snow/sleet mix
-            return UIStyleKit.Colors.precipitationBlue
-        case "t": // Thunderstorms
-            return UIStyleKit.Colors.precipitationBlue
-        case "f", "h", "br", "if", "zf": // Fog, haze, mist, ice fog, freezing fog
-            return UIStyleKit.Colors.precipitationBlue
-        default:
-            fatalError()
-        }
-    }
 
     private func setupVerticalLine() {
         // Rimuovi la linea singola e aggiungi il contenitore
@@ -544,7 +520,7 @@ class VerticalStatusBarView: UIView {
                     iconView.isHidden = true
                 }
 
-                let containerColor = getWeatherColor(for: weather)
+                let containerColor = weather.getBackgroundColor()
                 print("Weather color for container \(containerIndex): \(containerColor)")
                 container.backgroundColor = containerColor
                 container.layer.shadowColor = containerColor.withAlphaComponent(0.5).cgColor

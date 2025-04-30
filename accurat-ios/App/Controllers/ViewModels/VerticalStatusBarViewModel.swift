@@ -28,7 +28,7 @@ class VerticalStatusBarViewModel: ObservableObject {
     private let maxWaypoints = 6
     private var allWaypoints: [WaypointInfo] = []
     private var lastWeatherUpdateTime: Date = Date.distantPast
-    private let weatherUpdateInterval: TimeInterval = 600
+    private let weatherUpdateInterval: TimeInterval = 15
 
     // MARK: - Public Methods
     func setupWaypoints(waypoints: [Waypoint]) {

@@ -7,12 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		25972FAE2DB247E2007B9241 /* ios_run_moglia.gpx in Resources */ = {isa = PBXBuildFile; fileRef = 25972FAD2DB247E2007B9241 /* ios_run_moglia.gpx */; };
 		941024E1EB0BBC89779DD083 /* Pods_accurat_ios.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A104CAFC1F85CD79B764C583 /* Pods_accurat_ios.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		1D7ABB73D740738AE4B8D107 /* Pods-accurat-ios.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-accurat-ios.release.xcconfig"; path = "Target Support Files/Pods-accurat-ios/Pods-accurat-ios.release.xcconfig"; sourceTree = "<group>"; };
 		251230652D9B03000041E3D5 /* accurat-ios.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "accurat-ios.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		25972FAD2DB247E2007B9241 /* ios_run_moglia.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = ios_run_moglia.gpx; sourceTree = "<group>"; };
 		5DB6E2A4055320C72EB2C454 /* Pods-accurat-ios.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-accurat-ios.debug.xcconfig"; path = "Target Support Files/Pods-accurat-ios/Pods-accurat-ios.debug.xcconfig"; sourceTree = "<group>"; };
 		A104CAFC1F85CD79B764C583 /* Pods_accurat_ios.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_accurat_ios.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -53,6 +55,7 @@
 		2512305C2D9B03000041E3D5 = {
 			isa = PBXGroup;
 			children = (
+				25972FAD2DB247E2007B9241 /* ios_run_moglia.gpx */,
 				251230672D9B03000041E3D5 /* accurat-ios */,
 				251230662D9B03000041E3D5 /* Products */,
 				F9E22D8C8202585F1C94A5F6 /* Pods */,
@@ -149,6 +152,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				25972FAE2DB247E2007B9241 /* ios_run_moglia.gpx in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

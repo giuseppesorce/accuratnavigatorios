@@ -56,16 +56,41 @@ class MapboxViewFinder {
 
         return nil
     }
+
+    static func findNextBanner(in viewController: UIViewController) -> NextBannerView? {
+          // First try to find the InstructionsBanner
+          if let instructionsBanner = findInstructionsBanner(in: viewController) {
+              // Then look for the NextBannerView within it
+              if let nextBanner = findView(ofType: NextBannerView.self, in: instructionsBanner) {
+                  return nextBanner
+              }
+          }
+
+          // If not found, try a broader search
+          if let nextBanner = findView(ofType: NextBannerView.self, in: viewController.view) {
+              return nextBanner
+          }
+
+          // Check in child view controllers
+          for child in viewController.children {
+              if let nextBanner = findView(ofType: NextBannerView.self, in: child.view) {
+                  return nextBanner
+              }
+          }
+
+          return nil
+      }
+
     
-    static func findBottomBanner(in viewController: UIViewController) -> BottomBannerView? {
+    static func findBottomPaddingViewBanner(in viewController: UIViewController) -> BottomPaddingView? {
         // Try to find in main view
-        if let banner = findView(ofType: BottomBannerView.self, in: viewController.view) {
+        if let banner = findView(ofType:  BottomPaddingView.self, in: viewController.view) {
             return banner
         }
 
         // Check in child view controllers
         for child in viewController.children {
-            if let banner = findView(ofType: BottomBannerView.self, in: child.view) {
+            if let banner = findView(ofType: BottomPaddingView.self, in: child.view) {
                 return banner
             }
         }
@@ -83,6 +108,32 @@ class MapboxViewFinder {
                 return found
             }
         }
+        return nil
+    }
+
+    // Aggiungiamo questo metodo alla classe MapboxViewFinder
+    static func findBottomPaddingView(in viewController: UIViewController) -> UIView? {
+        // Cerca in modo ricorsivo la vista che contiene "BottomPaddingView" nel nome della classe
+        return findViewWithClassNameContaining("BottomPaddingView", in: viewController.view)
+    }
+
+    // Funzione di utility per trovare una vista in base al nome parziale della classe
+    static func findViewWithClassNameContaining(_ className: String, in view: UIView?) -> UIView? {
+        guard let view = view else { return nil }
+
+        // Controlla se il nome della classe della vista corrente contiene la stringa cercata
+        let viewClassName = String(describing: type(of: view))
+        if viewClassName.contains(className) {
+            return view
+        }
+
+        // Cerca nelle sottoviste
+        for subview in view.subviews {
+            if let found = findViewWithClassNameContaining(className, in: subview) {
+                return found
+            }
+        }
+
         return nil
     }
 }

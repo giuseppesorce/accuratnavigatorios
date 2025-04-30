@@ -7,6 +7,9 @@ import CoreLocation
 import MapboxDirections
 
 class StatusBarView: UIView {
+
+    private var showDistance: Bool
+
     // MARK: - UI Elements
     // Meteo a sinistra
     private let weatherContainer = UIView()
@@ -30,8 +33,9 @@ class StatusBarView: UIView {
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
-    init(weatherViewModel: WeatherViewModel) {
+    init(weatherViewModel: WeatherViewModel, showDistance: Bool) {
         self.weatherViewModel = weatherViewModel
+        self.showDistance = showDistance
         super.init(frame: .zero)
         setupUI()
         bindViewModels()
@@ -96,6 +100,11 @@ class StatusBarView: UIView {
         distanceLabel.textAlignment = .center
         distanceLabel.isHidden = true
         addSubview(distanceLabel)
+        
+        if (showDistance) {
+            distanceLabel.isHidden = false
+            temperatureLabel.isHidden = true
+        }
 
         // Loading indicator
         loadingIndicator.hidesWhenStopped = true
@@ -185,10 +194,10 @@ class StatusBarView: UIView {
             make.width.height.equalTo(16)
         }
 
-        // Distance (nascosto)
+        // Distance
         distanceLabel.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.bottom.equalToSuperview().offset(-8)
+            make.centerY.equalToSuperview()
         }
     }
 

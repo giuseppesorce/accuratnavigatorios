@@ -11,23 +11,26 @@ class HomeViewController: UIViewController {
     var locationManager = CLLocationManager()
 
     var useSimulation = false
-    
+
     lazy var bikeGpxWaypoints: [Waypoint] = {
         return [
 
-            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.9297, longitude: 10.9151),
-                     name: "Tamoil Moglia"),
-            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.8413835, longitude: 10.8758131),
-                     name: "Budrione"),
+//            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.9297, longitude: 10.9151),
+//                     name: "Tamoil Moglia"),
+//            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.8413835, longitude: 10.8758131),
+//                     name: "Budrione"),
 //            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.8513835, longitude: 10.8738131),
 //                     name: "Migliarina"),
-            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.7913835, longitude: 10.8138131),
-                     name: "Modena Nord"),
+            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 43.768860, longitude: 11.257379),
+                     name: "Firenze"),
+//            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.7913835, longitude: 10.8138131),
+//                     name: "Modena Nord"),
 //            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.9813835, longitude: 10.9338131),
 //                     name: "Mirandola Centro"),
-            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 41.984920, longitude: 15.004287),
-                     name: "Molise"),
-            
+//            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 41.984920, longitude: 15.004287),
+//                     name: "Molise"),
+//            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 37.9335954, longitude: 15.895415),
+//                     name: "Bova Marina, Calabria"),
 //            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.2478638, longitude: 12.3118436), name: "Cervia"),
 //            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 41.984920, longitude: 15.004287), name: "Molise"),
 
@@ -36,7 +39,7 @@ class HomeViewController: UIViewController {
 //            Waypoint(coordinate: CLLocationCoordinate2D(latitude: 44.8163835, longitude: 11.0258131), name: "Finale Emilia")
         ]
     }()
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -140,11 +143,12 @@ class HomeViewController: UIViewController {
                     let navigationOptions = NavigationOptions()
                     navigationOptions.simulationMode = strongSelf.useSimulation ? .always : .never
                     
-                    let customNavigationViewController = HomeNavigationController(
-                        for: indexedResponse,
-                        navigationOptions: navigationOptions
-                    )
-                    
+                    let customNavigationViewController = HomeNavigationController.createWithCustomBanner(
+                          for: indexedResponse,
+                          navigationOptions: navigationOptions
+                      )
+
+
                     customNavigationViewController.modalPresentationStyle = .fullScreen
                     customNavigationViewController.delegate = strongSelf
 

@@ -33,8 +33,10 @@ class StatusBarController {
     }
 
     func setup() {
-        // Setup horizontal status bar
-        let statusBar = StatusBarView(weatherViewModel: weatherViewModel)
+        // Crea la StatusBarView principale
+        let statusBar = StatusBarView(weatherViewModel: weatherViewModel,
+                                      showDistance: true)
+
         statusBarView = statusBar
         parentViewController.view.addSubview(statusBar)
 
@@ -50,6 +52,18 @@ class StatusBarController {
         )
         navigationService?.startObserving()
 
+        if let bottomPaddingView = MapboxViewFinder.findBottomPaddingView(in: parentViewController) {
+            let embeddedStatusBar = StatusBarView(weatherViewModel: weatherViewModel,
+                                                  showDistance: false)
+            bottomPaddingView.addSubview(embeddedStatusBar)
+
+            embeddedStatusBar.snp.makeConstraints { make in
+                make.height.equalTo(46)
+                make.leading.equalToSuperview().offset(12)
+                make.trailing.equalToSuperview().offset(-12)
+                make.top.equalToSuperview().offset(-20)
+            }
+        }
         updatePosition(animated: false)
     }
 
@@ -58,16 +72,15 @@ class StatusBarController {
               let verticalStatusBarView = verticalStatusBarView else { return }
 
         let isLandscape = UIDevice.current.orientation.isLandscape
-        let instructionsBanner = MapboxViewFinder.findInstructionsBanner(in: parentViewController)
+        let nextBannerView = MapboxViewFinder.findNextBanner(in: parentViewController)
 
-        // Position both views with/without animation
         if animated {
             UIView.animate(withDuration: 0.3) {
                 self.positionBars(
                     horizontal: statusBarView,
                     vertical: verticalStatusBarView,
                     isLandscape: isLandscape,
-                    instructionsBanner: instructionsBanner
+                    nextBannerView: nextBannerView
                 )
                 self.parentViewController.view.layoutIfNeeded()
             }
@@ -76,11 +89,9 @@ class StatusBarController {
                 horizontal: statusBarView,
                 vertical: verticalStatusBarView,
                 isLandscape: isLandscape,
-                instructionsBanner: instructionsBanner
+                nextBannerView: nextBannerView
             )
         }
-
-        // Ensure bars are in front
         parentViewController.view.bringSubviewToFront(statusBarView)
         parentViewController.view.bringSubviewToFront(verticalStatusBarView)
     }
@@ -89,13 +100,13 @@ class StatusBarController {
         horizontal: StatusBarView,
         vertical: VerticalStatusBarView,
         isLandscape: Bool,
-        instructionsBanner: UIView?
+        nextBannerView: UIView?
     ) {
 
         horizontal.snp.remakeConstraints { make in
             make.height.equalTo(46)
 
-            if let banner = instructionsBanner {
+            if let banner = nextBannerView {
                 make.top.equalTo(banner.snp.bottom).offset(8)
                 bannerFrame = banner.frame
             } else {

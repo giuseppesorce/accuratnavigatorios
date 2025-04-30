@@ -6,7 +6,7 @@ import Combine
 import MapboxDirections
 
 class WeatherViewModel: ObservableObject {
-    // Published properties using Combine
+
     @Published var currentWeather: WeatherCondition?
     @Published var currentRoadCondition: RoadCondition?
     @Published var routeRoadConditions: [RoadCondition] = []
@@ -21,11 +21,9 @@ class WeatherViewModel: ObservableObject {
     func updateDistance(distance: String) {
         self.distanceRemaining = distance
     }
-
+    
     // Fetch both weather and road conditions at once
     func updateConditions(at coordinate: CLLocationCoordinate2D) {
-        return
-        
         isLoading = true
         weatherErrorMessage = nil
         roadErrorMessage = nil

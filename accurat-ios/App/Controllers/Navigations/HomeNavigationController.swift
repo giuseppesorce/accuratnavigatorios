@@ -25,37 +25,123 @@ class HomeNavigationController: NavigationViewController {
         DispatchQueue.main.async {
             self.setupComponents()
         }
-
-        // Inizializza i waypoints per la barra di stato verticale
-        setupVerticalStatusBar()
+        
+        setupBothStatusBar()
 
         subscribeToRouteProgress()
         customizeUserLocationIcon()
 
         repositionAttributionButton()
+        customizeMapControlIcons()
+
+        InstructionsBannerView.appearance(whenContainedInInstancesOf: [InstructionsBannerView.self]).backgroundColor = .clear
     }
+    
+    static func createWithCustomBanner(for indexedRouteResponse: IndexedRouteResponse, navigationOptions: NavigationOptions?) -> HomeNavigationController {
+          let options = navigationOptions ?? NavigationOptions()
 
-    private func setupVerticalStatusBar() {
+          // Crea il custom bottom banner
+//          let customBottomBanner = CustomBottomBannerViewController()
+//          options.bottomBanner = customBottomBanner
+
+          // Crea il navigation controller con le options personalizzate
+          let navController = HomeNavigationController(for: indexedRouteResponse, navigationOptions: options)
+
+          return navController
+      }
+
+    private func setupBothStatusBar() {
         let route = navigationService.route
-        // Estrai i waypoint dalla route
-        let waypoints = route.legs.map { $0.destination! }
 
-        // Se abbiamo un punto di partenza, aggiungiamolo all'inizio
-        var allWaypoints = waypoints
-        if let origin = route.legs.first?.source {
-            allWaypoints.insert(origin, at: 0)
-        }
+        let sampleWaypoints = generateSamplePointsEvery50km(route: route)
 
-        // Inizializza il viewmodel con i waypoint
-        verticalStatusBarViewModel.setupWaypoints(waypoints: allWaypoints)
+        verticalStatusBarViewModel.setupWaypoints(waypoints: sampleWaypoints)
 
-        // Aggiorna subito le condizioni per la posizione attuale
         if let location = navigationService.router.location?.coordinate {
             verticalStatusBarViewModel.updateUserLocation(
                 userLocation: location,
                 routeProgress: navigationService.routeProgress
             )
         }
+    }
+
+    private func customizeMapControlIcons() {
+        navigationView.floatingButtons = []
+
+        guard let floatingButtons = navigationView.floatingButtons else { return }
+        for (index, button) in floatingButtons.enumerated() {
+            if let floatingButton = button as? FloatingButton {
+                // Customize mute button (second button)
+                if index == 1 {
+                    // Replace the mute button image with our custom images
+                    floatingButton.setImage(UIImage(named: "icon_mute"), for: .normal)
+                    floatingButton.setImage(UIImage(named: "icon_unmute"), for: .selected)
+                }
+
+                // Customize overview button (first button)
+                if index == 0 {
+                    floatingButton.setImage(UIImage(named: "icon_overview"), for: .normal)
+                }
+
+                // Customize report button (third button)
+                if index == 2 {
+                    floatingButton.setImage(UIImage(named: "icon_feedback"), for: .normal)
+                }
+
+                // Customize button appearance
+                floatingButton.backgroundColor = .white
+                floatingButton.tintColor = .black
+                floatingButton.layer.shadowColor = UIColor.black.cgColor
+                floatingButton.layer.shadowOffset = CGSize(width: 0, height: 2)
+                floatingButton.layer.shadowOpacity = 0.3
+                floatingButton.layer.shadowRadius = 2
+            }
+        }
+
+        // Set the position of the floating buttons (if needed)
+        // Options: .topLeading, .topTrailing, .bottomLeading, .bottomTrailing
+        self.floatingButtonsPosition = .topTrailing
+    }
+
+    private func generateSamplePointsEvery50km(route: Route) -> [Waypoint] {
+        var sampleWaypoints = [Waypoint]()
+
+        // Utilizza la LineString del percorso completo da Route.shape
+        guard let routeShape = route.shape else {
+            print("Errore: impossibile ottenere la geometria del percorso")
+            return []
+        }
+
+        let sampleDistanceInterval: Double = 50000 // 50km
+        let totalRouteDistance = route.distance
+
+        // Calcola il numero di campioni
+        let numberOfSamples = Int(totalRouteDistance / sampleDistanceInterval)
+        print("Totale distanza percorso: \(totalRouteDistance) metri")
+        print("Numero di sample points: \(numberOfSamples)")
+
+        // Se il percorso è troppo breve, restituisci una lista vuota
+        if numberOfSamples <= 0 {
+            return []
+        }
+
+        // Campiona punti lungo il percorso utilizzando Turf LineString
+        for i in 1...numberOfSamples {
+            let distanceAlongRoute = Double(i) * sampleDistanceInterval
+
+            // Verifica che la distanza non superi la lunghezza totale
+            if distanceAlongRoute < totalRouteDistance {
+                // Ottieni le coordinate alla distanza specificata della LineString
+                if let coordinateAtDistance = routeShape.coordinateFromStart(distance: distanceAlongRoute) {
+                    print("Sample point \(i) a distanza \(distanceAlongRoute)m: \(coordinateAtDistance.latitude), \(coordinateAtDistance.longitude)")
+                    let waypoint = Waypoint(coordinate: coordinateAtDistance)
+                    sampleWaypoints.append(waypoint)
+                }
+            }
+        }
+
+        print("Sample waypoints generati: \(sampleWaypoints.count)")
+        return sampleWaypoints
     }
 
     private func repositionAttributionButton() {
@@ -65,9 +151,9 @@ class HomeNavigationController: NavigationViewController {
         attributionOptions.position = .bottomLeading
         attributionOptions.margins = CGPoint(x: 10, y: 10)
 
-        //        var compassOptions = mapView.ornaments.options.compass
-        //        compassOptions.visibility = .hidden
-        //        mapView.ornaments.options.compass = compassOptions
+        //var compassOptions = mapView.ornaments.options.compass
+        //compassOptions.visibility = .hidden
+        //mapView.ornaments.options.compass = compassOptions
         mapView.ornaments.options.attributionButton = attributionOptions
 
         var logoOptions = mapView.ornaments.options.logo
@@ -77,20 +163,21 @@ class HomeNavigationController: NavigationViewController {
 
         self.floatingButtonsPosition = .topLeading
 
-        if let speedLimitView = MapboxViewFinder.findSpeedLimitView(in: view) {
-            speedLimitView.translatesAutoresizingMaskIntoConstraints = false
-            speedLimitView.superview?.constraints.forEach { constraint in
-                if constraint.firstItem as? SpeedLimitView == speedLimitView || constraint.secondItem as? SpeedLimitView == speedLimitView {
-                    constraint.isActive = false
-                }
-            }
-            if let bannerView = MapboxViewFinder.findBottomBanner(in: self) {
-                speedLimitView.snp.makeConstraints { make in
-                    make.leading.equalTo(view.safeAreaLayoutGuide).offset(8)
-                    make.bottom.equalTo(bannerView.snp.top).offset(-58)
-                }
-            }
-        }
+        // Da approfondire, rompe il layout.
+        //        if let speedLimitView = MapboxViewFinder.findSpeedLimitView(in: view) {
+        //            speedLimitView.translatesAutoresizingMaskIntoConstraints = false
+        //            speedLimitView.superview?.constraints.forEach { constraint in
+        //                if constraint.firstItem as? SpeedLimitView == speedLimitView || constraint.secondItem as? SpeedLimitView == speedLimitView {
+        //                    constraint.isActive = false
+        //                }
+        //            }
+        //            if let bannerView = MapboxViewFinder.findBottomBanner(in: self) {
+        //                speedLimitView.snp.makeConstraints { make in
+        //                    make.leading.equalTo(view.safeAreaLayoutGuide).offset(8)
+        //                    make.bottom.equalTo(bannerView.snp.top).offset(-58)
+        //                }
+        //            }
+        //        }
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -99,7 +186,7 @@ class HomeNavigationController: NavigationViewController {
         statusBarController?.updatePosition()
         startWeatherUpdates()
     }
-
+    
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
 
@@ -190,7 +277,7 @@ class HomeNavigationController: NavigationViewController {
             weatherViewModel.updateRouteRoadConditions(for: routeProgress.route)
 
             // Quando la rotta viene ricalcolata, aggiorna anche i waypoint per la barra verticale
-            setupVerticalStatusBar()
+            setupBothStatusBar()
         }
     }
 
@@ -199,20 +286,33 @@ class HomeNavigationController: NavigationViewController {
               let location = navigationService.router.location?.coordinate else {
             return
         }
-        // DEBUG - ON
-        verticalStatusBarViewModel.updateUserLocation(
-            userLocation: location,
-            routeProgress: routeProgress
-        )
-        
-        // Aggiorna la distanza rimanente
-        let formatter = DistanceFormatter()
-        let distanceRemaining = formatter.string(from: routeProgress.distanceRemaining)
-        weatherViewModel.updateDistance(distance: distanceRemaining)
+
+        if let firstSampleWaypoint = verticalStatusBarViewModel.activeWaypoints.first {
+            // Usa direttamente la shape della route per calcolare la distanza
+            if let shape = routeProgress.route.shape {
+                // Ottieni la coordinata attuale lungo il percorso
+                let userCoordinate = location
+                let waypointCoordinate = firstSampleWaypoint.waypoint.coordinate
+
+                // Trova il punto attuale del percorso
+                if let closestUserPoint = shape.closestCoordinate(to: userCoordinate) {
+                    // Trova il punto del waypoint sul percorso
+                    if let closestWaypointPoint = shape.closestCoordinate(to: waypointCoordinate) {
+                        // Calcola la distanza tra i due punti lungo il percorso
+                        if let distanceToWaypoint = shape.distance(from: closestUserPoint.coordinate, to: closestWaypointPoint.coordinate) {
+                            // Formatta la distanza
+                            let formatter = DistanceFormatter()
+                            let formattedDistance = formatter.string(from: distanceToWaypoint)
+                            weatherViewModel.updateDistance(distance: formattedDistance)
+                        }
+                    }
+                }
+            }
+        }
 
         // Calcola la distanza percorsa e definisci l'intervallo di aggiornamento
         let currentDistance = routeProgress.distanceTraveled
-        let updateInterval = 5000.0  // 5 chilometri in metri
+        let updateInterval: Double = 250  // in metri
 
         // Controlla se è il momento di aggiornare in base alla distanza percorsa
         if abs(currentDistance.truncatingRemainder(dividingBy: updateInterval)) < 100 {

@@ -24,7 +24,7 @@ class NavigationDistanceService {
                 return notification.userInfo?[RouteController.NotificationUserInfoKey.routeProgressKey] as? RouteProgress
             }
             .sink { [weak self] progress in
-                self?.handleRouteProgress(progress)
+//                self?.handleRouteProgress(progress)
             }
             .store(in: &cancellables)
 
@@ -39,17 +39,17 @@ class NavigationDistanceService {
             .store(in: &cancellables)
     }
 
-    private func handleRouteProgress(_ progress: RouteProgress) {
-        let formatter = DistanceFormatter()
-        let distance = formatter.string(from: progress.distanceRemaining)
-        let formattedDistance = "In \(distance)"
-
-        // Update horizontal view model
-        weatherViewModel?.updateDistance(distance: formattedDistance)
-        
-        // Check for congestion or other conditions that might require warnings
-        // updateWarningStatus(for: progress)
-    }
+//    private func handleRouteProgress(_ progress: RouteProgress) {
+//        let formatter = DistanceFormatter()
+//        let distance = formatter.string(from: progress.distanceRemaining)
+//        let formattedDistance = "In \(distance)"
+//
+//        // Update horizontal view model
+//        weatherViewModel?.updateDistance(distance: formattedDistance)
+//        
+//        // Check for congestion or other conditions that might require warnings
+//        // updateWarningStatus(for: progress)
+//    }
 }
 
 // Extension to create a combined service
